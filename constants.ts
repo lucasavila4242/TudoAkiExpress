@@ -62,7 +62,7 @@ export const PRODUCTS: Product[] = [
     category: 'Acessórios',
     rating: 4.5,
     reviewsCount: 89,
-    stock: 0,
+    stock: 10,
     deliveryToday: false,
     isBestSeller: false,
     tags: ['Novidade'],
@@ -141,6 +141,62 @@ export const PRODUCTS: Product[] = [
     deliveryToday: true,
     isBestSeller: false,
     tags: ['Essencial']
+  },
+  {
+    id: '5',
+    name: 'Câmera de Segurança 360 WiFi',
+    description: 'Monitore sua casa de onde estiver com imagem HD e visão noturna.',
+    price: 199.90,
+    image: 'https://picsum.photos/seed/camera/600/600',
+    category: 'Eletrônicos',
+    rating: 4.6,
+    reviewsCount: 34,
+    stock: 12,
+    deliveryToday: true,
+    isBestSeller: false,
+    tags: ['Segurança']
+  },
+  {
+    id: '6',
+    name: 'Teclado Mecânico Compacto 60%',
+    description: 'Switches azuis, iluminação RGB e design minimalista.',
+    price: 210.00,
+    image: 'https://picsum.photos/seed/keyboard/600/600',
+    category: 'Informática',
+    rating: 4.7,
+    reviewsCount: 56,
+    stock: 5,
+    deliveryToday: false,
+    isBestSeller: false,
+    tags: ['Gamer']
+  },
+  {
+    id: '7',
+    name: 'Suporte Articulado para Monitor',
+    description: 'Melhore sua ergonomia no home office em Cascavel.',
+    price: 145.00,
+    image: 'https://picsum.photos/seed/monitor/600/600',
+    category: 'Informática',
+    rating: 4.9,
+    reviewsCount: 22,
+    stock: 18,
+    deliveryToday: true,
+    isBestSeller: false,
+    tags: ['Escritório']
+  },
+  {
+    id: '8',
+    name: 'Lixeira Inteligente com Sensor',
+    description: 'Abertura automática e vedação de odores para sua cozinha.',
+    price: 129.00,
+    image: 'https://picsum.photos/seed/bin/600/600',
+    category: 'Casa',
+    rating: 4.4,
+    reviewsCount: 15,
+    stock: 7,
+    deliveryToday: true,
+    isBestSeller: false,
+    tags: ['Smart Home']
   }
 ];
 

@@ -21,7 +21,8 @@ import {
   Loader2,
   Lock
 } from 'lucide-react';
-import { CartItem, CheckoutData, UserProfile, Product } from '../types';
+// Fix: Changed UserProfile to User to match types.ts export
+import { CartItem, CheckoutData, User, Product } from '../types';
 import { PRODUCTS } from '../constants';
 
 const UpsellModal = ({ isOpen, onClose, items, onAdd }: { isOpen: boolean, onClose: () => void, items: Product[], onAdd: (p: Product) => void }) => {
@@ -98,7 +99,8 @@ const UpsellModal = ({ isOpen, onClose, items, onAdd }: { isOpen: boolean, onClo
   );
 };
 
-const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: UserProfile, onComplete: (earn: number, spent: number) => void }) => {
+// Fix: Changed UserProfile to User type
+const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, onComplete: (earn: number, spent: number) => void }) => {
   const [data, setData] = useState<CheckoutData>({
     name: user.name,
     whatsapp: '',

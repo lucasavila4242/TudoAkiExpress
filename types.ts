@@ -20,6 +20,29 @@ export interface CartItem extends Product {
   quantity: number;
 }
 
+export interface UserActivity {
+  id: string;
+  type: 'auth' | 'cart' | 'wishlist' | 'order';
+  action: string;
+  timestamp: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password?: string;
+  whatsapp: string;
+  points: number;
+  lifetimePoints: number;
+  tier: 'Bronze' | 'Prata' | 'Ouro';
+  address?: string;
+  // Banco de dados relacional simulado
+  persistedCart: CartItem[];
+  persistedWishlist: string[];
+  activityLog: UserActivity[];
+}
+
 export interface OrderLead {
   name: string;
   whatsapp: string;
@@ -36,11 +59,4 @@ export interface CheckoutData {
   deliveryTime?: string;
   paymentMethod: 'pix' | 'card' | 'cash';
   pointsToRedeem?: number;
-}
-
-export interface UserProfile {
-  name: string;
-  points: number;
-  lifetimePoints: number;
-  tier: 'Bronze' | 'Prata' | 'Ouro';
 }

@@ -1,9 +1,20 @@
 
-import React, { useState, useMemo } from 'react';
-import { Filter, SlidersHorizontal, ChevronDown, CheckCircle2, LayoutGrid, List, ChevronRight, Truck } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Filter, 
+  SlidersHorizontal, 
+  ChevronDown, 
+  CheckCircle2, 
+  LayoutGrid, 
+  ChevronRight, 
+  ChevronLeft,
+  Truck 
+} from 'lucide-react';
 import { PRODUCTS, CATEGORIES } from '../constants';
 import { Product } from '../types';
 import ProductCard from '../components/ProductCard';
+
+const ITEMS_PER_PAGE = 6;
 
 const Store = ({ 
   addToCart, 
@@ -18,6 +29,12 @@ const Store = ({
   const [sortBy, setSortBy] = useState('relevant');
   const [showOnlyInStock, setShowOnlyInStock] = useState(false);
   const [showDeliveryToday, setShowDeliveryToday] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, sortBy, showOnlyInStock, showDeliveryToday]);
 
   const filteredProducts = useMemo(() => {
     let result = [...PRODUCTS];
@@ -48,6 +65,18 @@ const Store = ({
 
     return result;
   }, [selectedCategory, sortBy, showOnlyInStock, showDeliveryToday]);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
@@ -152,20 +181,62 @@ const Store = ({
             </div>
           </aside>
 
-          {/* Product Grid */}
-          <div className="flex-1">
-            {filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-6">
-                {filteredProducts.map(p => (
-                  <ProductCard 
-                    key={p.id} 
-                    product={p} 
-                    onAddToCart={addToCart} 
-                    isWishlisted={wishlist.includes(p.id)}
-                    onToggleWishlist={toggleWishlist}
-                  />
-                ))}
-              </div>
+          {/* Product Grid & Pagination */}
+          <div className="flex-1 space-y-12">
+            {paginatedProducts.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-6">
+                  {paginatedProducts.map(p => (
+                    <ProductCard 
+                      key={p.id} 
+                      product={p} 
+                      onAddToCart={addToCart} 
+                      isWishlisted={wishlist.includes(p.id)}
+                      onToggleWishlist={toggleWishlist}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-8">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                      {[...Array(totalPages)].map((_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`w-12 h-12 rounded-xl text-sm font-black transition-all ${
+                              currentPage === pageNum
+                              ? 'bg-blue-900 text-white shadow-lg shadow-blue-900/20'
+                              : 'bg-white border border-gray-200 text-gray-500 hover:border-red-500 hover:text-red-500'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-3 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="bg-gray-100 p-8 rounded-full mb-6">
