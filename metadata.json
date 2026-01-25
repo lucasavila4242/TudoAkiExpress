@@ -1,0 +1,7 @@
+{
+  "name": "TudoAkiExpress – Cascavel Marketplace",
+  "description": "Um marketplace profissional e de alta conversão focado em vendas locais para Cascavel, oferecendo entrega no mesmo dia e checkout inteligente.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
