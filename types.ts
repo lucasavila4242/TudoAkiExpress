@@ -12,6 +12,7 @@ export interface Product {
   stock: number;
   deliveryToday: boolean;
   isBestSeller: boolean;
+  hasFreeShipping?: boolean; // Novo campo
   tags: string[];
   upsellIds?: string[];
 }

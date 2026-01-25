@@ -77,7 +77,7 @@ const ProductDetails = ({
               <button 
                 onClick={() => toggleWishlist(product.id)}
                 className={`absolute top-6 right-6 p-3 rounded-full shadow-lg transition-all active:scale-90 ${
-                  isWishlisted ? 'bg-red-500 text-white' : 'bg-white/80 backdrop-blur-md text-gray-500 hover:text-red-500'
+                  isWishlisted ? 'bg-red-500 text-white' : 'bg-white/80 backdrop-blur-md text-gray-400 hover:text-red-500'
                 }`}
               >
                 <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-white' : ''}`} />
@@ -99,6 +99,11 @@ const ProductDetails = ({
                 <span className="bg-blue-50 text-blue-900 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{product.category}</span>
                 {product.isBestSeller && (
                   <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Mais Vendido em Cascavel</span>
+                )}
+                {product.hasFreeShipping && (
+                  <span className="bg-green-50 text-green-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1">
+                    <Truck className="h-3 w-3" /> Frete Grátis*
+                  </span>
                 )}
               </div>
 
@@ -170,6 +175,7 @@ const ProductDetails = ({
                     <p className="text-xs text-gray-500">
                       {product.deliveryToday ? "Receba hoje até as 20h!" : "Envio rápido em 24h"}
                     </p>
+                    {product.hasFreeShipping && <p className="text-[10px] text-green-600 font-bold mt-1">*Frete grátis apenas para regiões selecionadas</p>}
                   </div>
                 </div>
               </div>

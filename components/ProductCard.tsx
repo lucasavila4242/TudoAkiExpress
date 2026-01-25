@@ -70,10 +70,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <span className="text-[10px] font-bold text-gray-400">{product.rating} ({product.reviewsCount})</span>
         </div>
         
-        <Link to={`/product/${product.id}`}>
-          <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 min-h-[2.5rem] group-hover:text-red-500 transition-colors">
-            {product.name}
-          </h3>
+        <Link to={`/product/${product.id}`} className="block">
+          <div className="flex flex-wrap items-center gap-x-2">
+            <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 min-h-[2.5rem] group-hover:text-red-500 transition-colors">
+              {product.name}
+            </h3>
+            {product.hasFreeShipping && (
+              <span className="inline-flex items-center gap-1 text-green-600 font-bold mb-1">
+                <Truck className="h-3 w-3" />
+                <span className="text-[9px] uppercase tracking-tighter">Frete Grátis*</span>
+              </span>
+            )}
+          </div>
         </Link>
         
         <div className="mt-2 flex flex-col">

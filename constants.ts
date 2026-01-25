@@ -9,6 +9,23 @@ export const COLORS = {
 
 export const PRODUCTS: Product[] = [
   {
+    id: '9',
+    name: 'Mini Ventilador Climatizador USB Portátil',
+    description: '❄️ Perfeito para o calor! Refresca e umidifica o ar com eficiência. Ideal para ambientes pequenos, como quarto, escritório ou mesa de trabalho. Alimentação via USB – use no notebook, PC ou carregador comum. Compacto, leve e fácil de levar pra qualquer lugar. Produto novo e pronto pra entrega em Cascavel!',
+    price: 89.90,
+    originalPrice: 149.00,
+    image: 'https://images.unsplash.com/photo-1591123120675-6f7f1aae0e5b?q=80&w=800&auto=format&fit=crop',
+    category: 'Casa',
+    rating: 4.9,
+    reviewsCount: 12,
+    stock: 25,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: true,
+    tags: ['Calor', 'Promoção', 'Top 1'],
+    upsellIds: ['u1']
+  },
+  {
     id: '1',
     name: 'Smartwatch Ultra Pro Max 2024',
     description: 'Monitoramento de saúde completo, GPS integrado e bateria de 7 dias. O companheiro ideal para sua rotina em Cascavel.',
@@ -21,6 +38,7 @@ export const PRODUCTS: Product[] = [
     stock: 15,
     deliveryToday: true,
     isBestSeller: true,
+    hasFreeShipping: true,
     tags: ['Promoção', 'Entrega Hoje'],
     upsellIds: ['u1', 'u2']
   },
