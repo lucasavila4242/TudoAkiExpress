@@ -37,6 +37,7 @@ export interface User {
   lifetimePoints: number;
   tier: 'Bronze' | 'Prata' | 'Ouro';
   address?: string;
+  isAdmin?: boolean;
   // Banco de dados relacional simulado
   persistedCart: CartItem[];
   persistedWishlist: string[];

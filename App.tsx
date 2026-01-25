@@ -20,7 +20,8 @@ import {
   User,
   Zap,
   Heart,
-  LogOut
+  LogOut,
+  ShieldAlert
 } from 'lucide-react';
 import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity } from './types';
@@ -31,6 +32,7 @@ import Store from './pages/Store';
 import ProductDetails from './pages/ProductDetails';
 import Checkout from './pages/Checkout';
 import Account from './pages/Account';
+import AdminDashboard from './pages/AdminDashboard';
 
 // Components
 import AuthModal from './components/AuthModal';
@@ -89,6 +91,12 @@ const Navbar = ({
           </div>
 
           <div className="flex items-center gap-4">
+            {user?.isAdmin && (
+              <Link to="/admin" className="hidden lg:flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all">
+                <ShieldAlert className="h-3 w-3" /> Painel Proprietário
+              </Link>
+            )}
+
             {user ? (
               <Link to="/account" className="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200">
                 <Award className="h-4 w-4" />
@@ -111,7 +119,7 @@ const Navbar = ({
   );
 };
 
-// ... CartSidebar remain mostly the same, simplified for clarity in update ...
+// ... CartSidebar remain mostly the same ...
 const CartSidebar = ({ isOpen, onClose, cart, updateQuantity, removeFromCart, navigateToCheckout }: any) => {
   const total = cart.reduce((acc: number, item: any) => acc + item.price * item.quantity, 0);
   if (!isOpen) return null;
@@ -162,35 +170,28 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Função central para atualizar o "Banco de Dados" do Usuário
   const updateDB = useCallback((updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
-    
     const users = JSON.parse(localStorage.getItem('aki_users') || '[]');
     const userIndex = users.findIndex((u: any) => u.id === user.id);
-    
     if (userIndex === -1) return;
-
     const newActivity: UserActivity | null = activity ? {
       id: Math.random().toString(36).substr(2, 9),
       type: activityType,
       action: activity,
       timestamp: new Date().toISOString()
     } : null;
-
     const updatedUser = { 
       ...users[userIndex], 
       ...updates,
       activityLog: newActivity ? [newActivity, ...users[userIndex].activityLog].slice(0, 50) : users[userIndex].activityLog
     };
-
     users[userIndex] = updatedUser;
     localStorage.setItem('aki_users', JSON.stringify(users));
     localStorage.setItem('aki_current_user', JSON.stringify(updatedUser));
     setUser(updatedUser);
   }, [user]);
 
-  // Sincroniza estado inicial ao logar
   useEffect(() => {
     if (user) {
       setCart(user.persistedCart || []);
@@ -243,26 +244,14 @@ export default function App() {
 
   const onOrderComplete = (pointsEarned: number, pointsSpent: number) => {
     if (!user) return;
-    const newPoints = user.points - pointsSpent + pointsEarned;
-    const newLifetime = user.lifetimePoints + pointsEarned;
-    updateDB({ 
-      points: newPoints, 
-      lifetimePoints: newLifetime, 
-      persistedCart: [] 
-    }, `Finalizou um pedido e ganhou ${pointsEarned} pontos`, 'order');
+    updateDB({ points: user.points - pointsSpent + pointsEarned, lifetimePoints: user.lifetimePoints + pointsEarned, persistedCart: [] }, `Finalizou um pedido e ganhou ${pointsEarned} pontos`, 'order');
     setCart([]);
   };
 
   return (
     <HashRouter>
       <div className="flex flex-col min-h-screen">
-        <Navbar 
-          cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} 
-          toggleCart={() => setIsCartOpen(true)} 
-          user={user}
-          openAuth={() => setIsAuthModalOpen(true)}
-          logout={logout}
-        />
+        <Navbar cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} toggleCart={() => setIsCartOpen(true)} user={user} openAuth={() => setIsAuthModalOpen(true)} logout={logout} />
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
@@ -270,6 +259,7 @@ export default function App() {
             <Route path="/product/:id" element={<ProductDetails addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
             <Route path="/checkout" element={<Checkout cart={cart} user={user || { name: 'Visitante', points: 0, lifetimePoints: 0, tier: 'Bronze', id: 'guest', email: '', whatsapp: '', persistedCart: [], persistedWishlist: [], activityLog: [] }} onComplete={onOrderComplete} />} />
             <Route path="/account" element={<Account user={user} wishlist={wishlist} toggleWishlist={toggleWishlist} addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} onOpenAuth={() => setIsAuthModalOpen(true)} />} />
+            <Route path="/admin" element={<AdminDashboard currentUser={user} />} />
           </Routes>
         </main>
         <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={updateQuantity} navigateToCheckout={() => { setIsCartOpen(false); window.location.hash = '/checkout'; }} />

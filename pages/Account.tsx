@@ -15,7 +15,8 @@ import {
   UserPlus,
   History,
   ShoppingCart,
-  Calendar
+  Calendar,
+  ShieldAlert
 } from 'lucide-react';
 import { User, Product } from '../types';
 import { PRODUCTS } from '../constants';
@@ -67,6 +68,21 @@ const Account = ({
         
         {/* Lado Esquerdo: Perfil e Pontos */}
         <div className="lg:col-span-2 space-y-8">
+          {user.isAdmin && (
+            <Link to="/admin" className="block bg-gradient-to-r from-red-600 to-red-800 p-6 rounded-[2.5rem] text-white shadow-xl shadow-red-500/20 group hover:scale-[1.02] transition-all">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/20 rounded-2xl"><ShieldAlert /></div>
+                  <div>
+                    <h3 className="text-lg font-black uppercase tracking-tight">Painel do Proprietário</h3>
+                    <p className="text-xs text-red-100 font-medium">Você tem acesso total aos dados de Cascavel</p>
+                  </div>
+                </div>
+                <ChevronRight className="group-hover:translate-x-2 transition-transform" />
+              </div>
+            </Link>
+          )}
+
           <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 flex items-center gap-6">
             <div className="w-20 h-20 bg-blue-900 rounded-full flex items-center justify-center text-white text-3xl font-black">{user.name.charAt(0)}</div>
             <div>
@@ -98,7 +114,7 @@ const Account = ({
           </div>
         </div>
 
-        {/* Lado Direito: Histórico de Ações (Banco de Dados) */}
+        {/* Lado Direito: Histórico de Ações */}
         <div className="space-y-8">
           <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 h-full flex flex-col">
             <h3 className="text-xl font-black text-blue-900 mb-6 flex items-center gap-2">
@@ -132,10 +148,6 @@ const Account = ({
                   <p className="text-xs font-bold uppercase">Sem registros</p>
                 </div>
               )}
-            </div>
-            
-            <div className="pt-6 mt-6 border-t border-gray-50">
-              <p className="text-[10px] text-gray-400 font-bold uppercase text-center">Dados Sincronizados via TudoAki DB</p>
             </div>
           </div>
         </div>
