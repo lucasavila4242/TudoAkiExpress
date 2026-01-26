@@ -6,13 +6,14 @@ export interface Product {
   price: number;
   originalPrice?: number;
   image: string;
+  images?: string[]; // Suporte para galeria
   category: string;
   rating: number;
   reviewsCount: number;
   stock: number;
   deliveryToday: boolean;
   isBestSeller: boolean;
-  hasFreeShipping?: boolean; // Novo campo
+  hasFreeShipping?: boolean;
   tags: string[];
   upsellIds?: string[];
 }
@@ -39,7 +40,6 @@ export interface User {
   tier: 'Bronze' | 'Prata' | 'Ouro';
   address?: string;
   isAdmin?: boolean;
-  // Banco de dados relacional simulado
   persistedCart: CartItem[];
   persistedWishlist: string[];
   activityLog: UserActivity[];

@@ -33,9 +33,8 @@ const ProductDetails = ({
 }) => {
   const { id } = useParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1);
-  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
-  const [notifyData, setNotifyData] = useState({ name: '', whatsapp: '' });
   const [activeTab, setActiveTab] = useState('description');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const product = useMemo(() => PRODUCTS.find(p => p.id === id), [id]);
   const upsellProducts = useMemo(() => {
@@ -52,8 +51,7 @@ const ProductDetails = ({
 
   const isOutOfStock = product.stock === 0;
   const isWishlisted = wishlist.includes(product.id);
-
-  const relatedProducts = PRODUCTS.filter(p => p.id !== product.id && p.category === product.category).slice(0, 3);
+  const productImages = product.images && product.images.length > 0 ? product.images : [product.image];
 
   return (
     <div className="bg-white min-h-screen pb-20">
@@ -66,7 +64,11 @@ const ProductDetails = ({
           {/* Gallery Area */}
           <div className="lg:col-span-7 space-y-4">
             <div className="relative aspect-square rounded-[2.5rem] overflow-hidden bg-gray-50 border border-gray-100 group shadow-lg">
-              <img src={product.image} className="w-full h-full object-cover" />
+              <img 
+                src={productImages[selectedImageIndex]} 
+                className="w-full h-full object-cover transition-opacity duration-300" 
+                alt={product.name}
+              />
               <button 
                 onClick={() => toggleWishlist(product.id)}
                 className={`absolute top-6 right-6 p-4 rounded-full shadow-xl transition-all active:scale-90 ${
@@ -76,6 +78,21 @@ const ProductDetails = ({
                 <Heart className={`h-6 w-6 ${isWishlisted ? 'fill-white' : ''}`} />
               </button>
             </div>
+            
+            {/* Thumbnails */}
+            {productImages.length > 1 && (
+              <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+                {productImages.map((img, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={`relative w-24 h-24 rounded-2xl overflow-hidden border-2 transition-all flex-shrink-0 ${selectedImageIndex === idx ? 'border-red-500 shadow-md scale-105' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                  >
+                    <img src={img} className="w-full h-full object-cover" alt={`${product.name} view ${idx}`} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Info Area */}
@@ -161,7 +178,7 @@ const ProductDetails = ({
         {/* Tabs & Details */}
         <div className="mt-20 border-t border-gray-100 pt-16">
           <div className="max-w-4xl mx-auto">
-            <div className="flex gap-12 border-b border-gray-100 mb-12">
+            <div className="flex gap-12 border-b border-gray-100 mb-12 overflow-x-auto custom-scrollbar whitespace-nowrap">
               <button
                 onClick={() => setActiveTab('description')}
                 className={`pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'description' ? 'text-blue-900' : 'text-gray-400'}`}
