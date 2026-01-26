@@ -16,6 +16,7 @@ export interface Product {
   hasFreeShipping?: boolean;
   tags: string[];
   upsellIds?: string[];
+  benefits?: string[]; // Novos diferenciais destacados em grid
 }
 
 export interface CartItem extends Product {
@@ -61,4 +62,5 @@ export interface CheckoutData {
   deliveryTime?: string;
   paymentMethod: 'pix' | 'card' | 'cash';
   pointsToRedeem?: number;
+  couponCode?: string;
 }

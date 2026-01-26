@@ -7,7 +7,129 @@ export const COLORS = {
   accent: '#F59E0B', // Amber-500
 };
 
+export interface Testimonial {
+  id: number;
+  name: string;
+  avatar: string;
+  text: string;
+  district: string;
+  rating: number;
+}
+
+export const TESTIMONIALS: Testimonial[] = [
+  {
+    id: 1,
+    name: "Eduardo S.",
+    avatar: "https://i.pravatar.cc/150?img=11",
+    text: "A agilidade é surreal. Comprei o fone e em menos de 2 horas o entregador estava na minha porta no Bairro Neva. O TudoAki mudou o jogo!",
+    district: "Neva",
+    rating: 5
+  },
+  {
+    id: 2,
+    name: "Mariana L.",
+    avatar: "https://i.pravatar.cc/150?img=32",
+    text: "Estava precisando de um climatizador urgente para o escritório no Centro. Chegou geladinho e funcionando perfeito. Recomendo muito!",
+    district: "Centro",
+    rating: 5
+  },
+  {
+    id: 3,
+    name: "Ricardo M.",
+    avatar: "https://i.pravatar.cc/150?img=12",
+    text: "O GameStick é sensacional, meus filhos adoraram. O suporte pelo WhatsApp foi super atencioso antes da compra.",
+    district: "Tropical",
+    rating: 5
+  },
+  {
+    id: 4,
+    name: "Ana Paula K.",
+    avatar: "https://i.pravatar.cc/150?img=44",
+    text: "Melhor preço de Cascavel e a entrega é realmente expressa. Comprei de manhã e usei na hora do almoço. Virei cliente fiel!",
+    district: "Cancelli",
+    rating: 5
+  },
+  {
+    id: 5,
+    name: "Bruno F.",
+    avatar: "https://i.pravatar.cc/150?img=15",
+    text: "O sistema de pontos AkiPrivilégio realmente funciona. Já ganhei desconto na minha segunda compra. Muito profissional.",
+    district: "Coqueiral",
+    rating: 5
+  },
+  {
+    id: 6,
+    name: "Carla J.",
+    avatar: "https://i.pravatar.cc/150?img=21",
+    text: "Comprei o fone Lenovo e a qualidade é incrível pelo preço. Entrega discreta e rápida aqui no Parque Verde.",
+    district: "Parque Verde",
+    rating: 4
+  },
+  {
+    id: 7,
+    name: "João Pedro G.",
+    avatar: "https://i.pravatar.cc/150?img=33",
+    text: "O checkout é muito simples. Fiz o PIX e em 5 minutos meu pedido já estava sendo preparado. Nota 10.",
+    district: "Santa Cruz",
+    rating: 5
+  },
+  {
+    id: 8,
+    name: "Beatriz V.",
+    avatar: "https://i.pravatar.cc/150?img=49",
+    text: "Excelente atendimento. Tive uma dúvida sobre o GameStick e me responderam na hora. O produto chegou muito bem embalado.",
+    district: "FAG",
+    rating: 5
+  },
+  {
+    id: 9,
+    name: "Marcos T.",
+    avatar: "https://i.pravatar.cc/150?img=18",
+    text: "Cascavel precisava de um marketplace assim. Chega de esperar 15 dias pelo correio. Com o TudoAki é na hora!",
+    district: "Universitário",
+    rating: 5
+  },
+  {
+    id: 10,
+    name: "Fernanda O.",
+    avatar: "https://i.pravatar.cc/150?img=26",
+    text: "O mini ventilador me salvou nesse calor! Pequeno, mas gela muito bem. Entrega pontual conforme o combinado.",
+    district: "Pacaembu",
+    rating: 5
+  }
+];
+
 export const PRODUCTS: Product[] = [
+  {
+    id: '11',
+    name: 'Fone Bluetooth Lenovo Profissional',
+    description: '🔊 Som potente e estéreo com graves reforçados\n🎮 Modo gamer com baixa latência para jogos\n🎵 Modo música com qualidade HD\n🎙️ Microfone embutido para chamadas nítidas\n📱 Bluetooth 5.3 – conexão rápida e estável\n⚡ Toque sensível – controles por toque\n🔋 Autonomia: até 4h por carga / 20h com o estojo\n💡 Display digital mostra o nível da bateria\n💼 Case compacta e moderna',
+    price: 129.90,
+    originalPrice: 199.00,
+    image: 'https://iili.io/fPoVzhX.png',
+    images: [
+      'https://iili.io/fPoVzhX.png',
+      'https://iili.io/fPoX2Uv.md.png',
+      'https://iili.io/fPoXVdx.md.png'
+    ],
+    category: 'Acessórios',
+    rating: 4.9,
+    reviewsCount: 32,
+    stock: 25,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: true,
+    tags: ['Lançamento', 'Gamer', 'Lenovo'],
+    upsellIds: [],
+    benefits: [
+      "Som Potente & Graves Reforçados",
+      "Baixa Latência para Games",
+      "Qualidade de Áudio HD",
+      "Microfone de Alta Definição",
+      "Bluetooth 5.3 Ultra Estável",
+      "Até 20h de Bateria Total"
+    ]
+  },
   {
     id: '10',
     name: 'GameStick Pro – 2 Controles PS5',
@@ -29,7 +151,15 @@ export const PRODUCTS: Product[] = [
     isBestSeller: true,
     hasFreeShipping: true,
     tags: ['Gamer', 'Novo', '20k Jogos'],
-    upsellIds: []
+    upsellIds: [],
+    benefits: [
+      "20 Mil Jogos Prontos para Jogar",
+      "2 Controles Sem Fio 2.4G",
+      "Conexão HDMI Plug & Play",
+      "Compatível com 4K TV",
+      "Salva Progresso dos Jogos",
+      "Sistema Multi-Plataforma"
+    ]
   },
   {
     id: '9',
@@ -51,82 +181,16 @@ export const PRODUCTS: Product[] = [
     isBestSeller: true,
     hasFreeShipping: true,
     tags: ['Calor', 'Promoção', 'Top 1'],
-    upsellIds: ['u4']
-  },
-  {
-    id: '2',
-    name: 'Fone Bluetooth Noise Cancelling',
-    description: 'Som imersivo com cancelamento de ruído ativo. Perfeito para quem busca foco e qualidade sonora superior.',
-    price: 189.00,
-    originalPrice: 250.00,
-    image: 'https://picsum.photos/seed/headphones/600/600',
-    category: 'Acessórios',
-    rating: 4.5,
-    reviewsCount: 89,
-    stock: 10,
-    deliveryToday: false,
-    isBestSeller: false,
-    tags: ['Novidade'],
-    upsellIds: ['u3']
-  },
-  {
-    id: 'u3',
-    name: 'Case de Silicone Protetora',
-    description: 'Evite danos ao estojo de carga do seu fone.',
-    price: 29.90,
-    image: 'https://picsum.photos/seed/case/600/600',
-    category: 'Acessórios',
-    rating: 4.8,
-    reviewsCount: 120,
-    stock: 60,
-    deliveryToday: true,
-    isBestSeller: false,
-    tags: []
-  },
-  {
-    id: 'u4',
-    name: 'Lâmpada Reserva Inteligente 9W',
-    description: 'Nunca fique no escuro, tenha sempre uma reserva à mão.',
-    price: 45.00,
-    image: 'https://picsum.photos/seed/bulb/600/600',
-    category: 'Acessórios',
-    rating: 4.6,
-    reviewsCount: 15,
-    stock: 10,
-    deliveryToday: true,
-    isBestSeller: false,
-    tags: []
-  },
-  {
-    id: '4',
-    name: 'Kit Gamer Teclado + Mouse RGB',
-    description: 'Alta precisão e ergonomia para suas partidas. Iluminação personalizável e switches mecânicos.',
-    price: 159.00,
-    originalPrice: 220.00,
-    image: 'https://picsum.photos/seed/gaming/600/600',
-    category: 'Informática',
-    rating: 4.9,
-    reviewsCount: 112,
-    stock: 8,
-    deliveryToday: true,
-    isBestSeller: false,
-    tags: ['Mais Vendido'],
-    upsellIds: ['u5']
-  },
-  {
-    id: 'u5',
-    name: 'Mousepad Gamer Speed XL',
-    description: '80x30cm para total liberdade de movimento.',
-    price: 49.90,
-    image: 'https://picsum.photos/seed/mousepad/600/600',
-    category: 'Informática',
-    rating: 4.8,
-    reviewsCount: 88,
-    stock: 15,
-    deliveryToday: true,
-    isBestSeller: false,
-    tags: ['Essencial']
+    upsellIds: [],
+    benefits: [
+      "Baixo Consumo de Energia USB",
+      "3 Níveis de Velocidade",
+      "Tecnologia de Resfriamento",
+      "Reservatório de Fácil Recarga",
+      "Operação Silenciosa",
+      "Alça de Transporte Premium"
+    ]
   }
 ];
 
-export const CATEGORIES = ['Todos', 'Eletrônicos', 'Acessórios', 'Casa', 'Informática'];
+export const CATEGORIES = ['Todos', 'Eletrônicos', 'Acessórios', 'Casa'];

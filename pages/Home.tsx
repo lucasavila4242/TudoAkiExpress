@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ChevronRight, 
@@ -17,7 +17,7 @@ import {
   ShoppingBag,
   CheckCircle2
 } from 'lucide-react';
-import { PRODUCTS, COLORS } from '../constants';
+import { PRODUCTS, COLORS, TESTIMONIALS } from '../constants';
 import { Product } from '../types';
 import ProductCard from '../components/ProductCard';
 
@@ -34,9 +34,29 @@ const Home = ({
   const flashDeals = PRODUCTS.filter(p => p.originalPrice).slice(0, 4);
   const newArrivals = PRODUCTS.slice(0, 4);
 
+  // Lógica de Rotação por Hora
+  const currentTestimonials = useMemo(() => {
+    const now = new Date();
+    // Cria uma semente baseada no dia e hora (Ex: 2024102514)
+    const hourSeed = now.getHours() + (now.getDate() * 24) + (now.getMonth() * 31 * 24);
+    
+    // Seleciona 3 índices diferentes baseados na semente
+    const total = TESTIMONIALS.length;
+    const idx1 = hourSeed % total;
+    const idx2 = (hourSeed + 2) % total;
+    const idx3 = (hourSeed + 5) % total;
+
+    // Garante que sejam únicos (se o pool for pequeno, o +2 e +5 ajudam)
+    return [
+      TESTIMONIALS[idx1],
+      TESTIMONIALS[idx2],
+      TESTIMONIALS[idx3]
+    ];
+  }, []);
+
   return (
     <div className="pb-20">
-      {/* Hero Banner Section - Melhorado para Clima de Vendas */}
+      {/* Hero Banner Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 py-12 sm:py-24">
         <div className="absolute inset-0 z-0">
           <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-red-600/20 rounded-full blur-[120px] animate-pulse" />
@@ -87,10 +107,8 @@ const Home = ({
             </div>
             
             <div className="hidden lg:block relative">
-              {/* Moldura de Promoção Principal */}
               <div className="relative z-10 bg-gradient-to-tr from-white/10 to-white/5 backdrop-blur-xl border border-white/20 p-4 rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)]">
                 <div className="relative rounded-[2.5rem] overflow-hidden aspect-[4/5] group">
-                  {/* Imagem de Contexto de Vendas: Tecnologia e Lifestyle */}
                   <img 
                     src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop" 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
@@ -115,7 +133,6 @@ const Home = ({
                   </div>
                 </div>
 
-                {/* Badges Flutuantes para "Vibe" de Vendas */}
                 <div className="absolute -right-8 top-12 bg-white p-5 rounded-3xl shadow-2xl border border-gray-100 animate-bounce-slow">
                   <div className="flex items-center gap-3">
                     <div className="bg-green-100 p-2 rounded-xl">
@@ -140,8 +157,6 @@ const Home = ({
                   </div>
                 </div>
               </div>
-
-              {/* Elementos Decorativos de Fundo */}
               <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-red-500 rounded-full blur-3xl opacity-40"></div>
               <div className="absolute -top-6 -left-6 w-24 h-24 bg-blue-400 rounded-full blur-3xl opacity-30"></div>
             </div>
@@ -149,7 +164,7 @@ const Home = ({
         </div>
       </section>
 
-      {/* Trust Badges - Estilo Profissional */}
+      {/* Trust Badges */}
       <div className="bg-white border-b border-gray-100 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
@@ -176,7 +191,6 @@ const Home = ({
                 <Zap className="h-8 w-8 text-blue-900 group-hover:text-red-500 transition-colors" />
               </div>
               <div>
-                <h4 className="font-black text-blue-900 text-sm">Pix Aprovado</h4>
                 <h4 className="font-black text-blue-900 text-sm">Aprovação Instantânea</h4>
                 <p className="text-xs text-gray-500">Cashback Acumulativo</p>
               </div>
@@ -194,7 +208,7 @@ const Home = ({
         </div>
       </div>
 
-      {/* Featured Sections - Vendas em Foco */}
+      {/* Featured Sections */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-32">
         
         {/* 🔥 Mais Vendidos */}
@@ -224,7 +238,7 @@ const Home = ({
           </div>
         </section>
 
-        {/* ⚡ Ofertas Relâmpago - Banner de Urgência */}
+        {/* ⚡ Ofertas Relâmpago */}
         <section className="bg-gradient-to-br from-red-600 to-red-700 rounded-[4rem] p-8 sm:p-16 relative overflow-hidden shadow-[0_40px_80px_-15px_rgba(239,68,68,0.3)]">
           <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
             <Zap className="w-96 h-96 text-white fill-white" />
@@ -267,7 +281,7 @@ const Home = ({
           </div>
         </section>
 
-        {/* 📦 Novidades com Estilo Galeria */}
+        {/* 📦 Novidades */}
         <section>
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
             <div className="space-y-2">
@@ -291,30 +305,32 @@ const Home = ({
         </section>
       </div>
       
-      {/* Testimonials - Prova Social */}
+      {/* Testimonials - Rotação Dinâmica */}
       <section className="bg-gray-50/50 py-32 border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-black text-blue-900 mb-20 tracking-tight">A voz de quem compra local</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 relative group hover:shadow-xl transition-shadow">
+            {currentTestimonials.map(testimonial => (
+              <div key={testimonial.id} className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 relative group hover:shadow-xl transition-shadow flex flex-col h-full">
                 <div className="absolute -top-6 left-1/2 -translate-x-1/2">
                    <div className="bg-blue-900 p-3 rounded-2xl shadow-lg shadow-blue-900/20">
                     <Star className="h-6 w-6 text-amber-400 fill-amber-400" />
                    </div>
                 </div>
                 <div className="flex justify-center mb-6 pt-4">
-                  {[...Array(5)].map((_, j) => <Star key={j} className="h-4 w-4 text-amber-400 fill-amber-400" />)}
+                  {[...Array(5)].map((_, j) => (
+                    <Star key={j} className={`h-4 w-4 ${j < testimonial.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}`} />
+                  ))}
                 </div>
-                <p className="text-gray-600 text-lg leading-relaxed mb-10 font-medium">
-                  "A agilidade é surreal. Comprei o fone e em menos de 2 horas o entregador estava na minha porta no Bairro Neva. O TudoAki mudou o jogo!"
+                <p className="text-gray-600 text-lg leading-relaxed mb-10 font-medium flex-grow italic">
+                  "{testimonial.text}"
                 </p>
-                <div className="flex items-center justify-center gap-4">
-                  <img src={`https://i.pravatar.cc/150?img=${i+20}`} className="w-14 h-14 rounded-full border-2 border-red-50" alt="Avatar" />
+                <div className="flex items-center justify-center gap-4 mt-auto">
+                  <img src={testimonial.avatar} className="w-14 h-14 rounded-full border-2 border-red-50 shadow-md" alt={testimonial.name} />
                   <div className="text-left">
-                    <p className="text-base font-black text-blue-900">Eduardo S. {i}</p>
+                    <p className="text-base font-black text-blue-900">{testimonial.name}</p>
                     <div className="flex items-center gap-1 text-[10px] text-green-600 font-bold uppercase tracking-widest">
-                      <CheckCircle2 className="h-3 w-3" /> Cliente Verificado
+                      <CheckCircle2 className="h-3 w-3" /> Bairro {testimonial.district}
                     </div>
                   </div>
                 </div>

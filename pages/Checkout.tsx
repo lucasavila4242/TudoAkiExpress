@@ -19,11 +19,19 @@ import {
   QrCode,
   Copy,
   Loader2,
-  Lock
+  Lock,
+  Ticket,
+  Tag,
+  AlertCircle
 } from 'lucide-react';
-// Fix: Changed UserProfile to User to match types.ts export
 import { CartItem, CheckoutData, User, Product } from '../types';
 import { PRODUCTS } from '../constants';
+
+const VALID_COUPONS: Record<string, number> = {
+  'CASCAVEL10': 0.10, // 10% de desconto
+  'BEMVINDO': 0.05,   // 5% de desconto
+  'AKIFREE': 15.00    // Valor fixo (exemplo) - lógica adaptada para % abaixo
+};
 
 const UpsellModal = ({ isOpen, onClose, items, onAdd }: { isOpen: boolean, onClose: () => void, items: Product[], onAdd: (p: Product) => void }) => {
   const [timeLeft, setTimeLeft] = useState(300);
@@ -99,7 +107,6 @@ const UpsellModal = ({ isOpen, onClose, items, onAdd }: { isOpen: boolean, onClo
   );
 };
 
-// Fix: Changed UserProfile to User type
 const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, onComplete: (earn: number, spent: number) => void }) => {
   const [data, setData] = useState<CheckoutData>({
     name: user.name,
@@ -115,11 +122,23 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'pix_generated' | 'success'>('idle');
   const [processingMessage, setProcessingMessage] = useState('Processando pagamento...');
 
+  // Coupon State
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string, discount: number } | null>(null);
+  const [couponError, setCouponError] = useState('');
+
   const subtotal = useMemo(() => cart.reduce((acc, i) => acc + i.price * i.quantity, 0), [cart]);
+  
+  const couponDiscountValue = useMemo(() => {
+    if (!appliedCoupon) return 0;
+    return subtotal * appliedCoupon.discount;
+  }, [subtotal, appliedCoupon]);
+
   const shipping = data.deliveryMethod === 'standard' ? (subtotal > 150 ? 0 : 10) : 25;
-  const maxRedeemablePoints = Math.min(user.points, Math.floor((subtotal + shipping) * 20));
+  const maxRedeemablePoints = Math.min(user.points, Math.floor((subtotal + shipping - couponDiscountValue) * 20));
   const pointsValue = usePoints ? maxRedeemablePoints / 20 : 0;
-  const total = subtotal + shipping - pointsValue;
+  
+  const total = Math.max(0, subtotal + shipping - pointsValue - couponDiscountValue);
   const pointsToEarn = Math.floor(total);
 
   const availableUpsells = useMemo(() => {
@@ -133,6 +152,24 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
     if (availableUpsells.length > 0 && !upsellShown) {
       setTimeout(() => { setIsUpsellOpen(true); setUpsellShown(true); }, 500);
     }
+  };
+
+  const handleApplyCoupon = () => {
+    setCouponError('');
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+
+    if (VALID_COUPONS[code]) {
+      setAppliedCoupon({ code, discount: VALID_COUPONS[code] });
+      setCouponInput('');
+    } else {
+      setCouponError('Cupom inválido ou expirado.');
+      setTimeout(() => setCouponError(''), 3000);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
   };
 
   const handleAddUpsell = (product: Product) => {
@@ -199,7 +236,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
             <div className="space-y-4">
               <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Código Copia e Cola</p>
               <div className="flex gap-2">
-                <input readOnly value="00020126580014br.gov.bcb.pix0136tudoakiexpress-cascavel-pagamento" className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-[10px] flex-1 font-mono text-gray-500" />
+                <input readOnly value="00020126580014br.gov.bcb.pix0136tudoakiexpress-cascavel-pagamento" className="bg-white border border-gray-100 rounded-xl px-4 py-3 text-[10px] flex-1 font-mono text-gray-500" />
                 <button onClick={() => alert("Código copiado!")} className="bg-blue-900 text-white p-4 rounded-xl hover:bg-red-500 transition-colors">
                   <Copy className="h-5 w-5" />
                 </button>
@@ -253,7 +290,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                 </div>
               </div>
 
-              {/* Step 2: Delivery (Restored) */}
+              {/* Step 2: Delivery */}
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="w-10 h-10 bg-blue-900 text-white rounded-2xl flex items-center justify-center font-black">2</div>
@@ -332,7 +369,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                 </div>
               </div>
 
-              {/* Step 3: Payment Gateway Integration */}
+              {/* Step 3: Payment */}
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="w-10 h-10 bg-blue-900 text-white rounded-2xl flex items-center justify-center font-black">3</div>
@@ -405,14 +442,70 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                     </div>
                   ))}
                 </div>
+
+                {/* Coupon Section */}
+                <div className="pt-6 border-t border-gray-100">
+                  {!appliedCoupon ? (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <Ticket className="h-3 w-3" /> Possui um cupom?
+                      </p>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input 
+                            type="text" 
+                            placeholder="Código" 
+                            className={`w-full bg-gray-50 border-2 rounded-xl px-4 py-2.5 text-xs font-bold outline-none transition-all ${couponError ? 'border-red-200 focus:border-red-400' : 'border-gray-100 focus:border-blue-900'}`}
+                            value={couponInput}
+                            onChange={(e) => setCouponInput(e.target.value)}
+                          />
+                          {couponError && <AlertCircle className="absolute right-3 top-2.5 h-4 w-4 text-red-500" />}
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          className="bg-blue-900 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 transition-colors"
+                        >
+                          Aplicar
+                        </button>
+                      </div>
+                      {couponError && <p className="text-[10px] text-red-500 font-bold ml-1">{couponError}</p>}
+                    </div>
+                  ) : (
+                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center justify-between group">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-emerald-500 p-2 rounded-lg">
+                          <Tag className="h-4 w-4 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-emerald-800 uppercase leading-none">Cupom Aplicado!</p>
+                          <p className="text-sm font-black text-emerald-600">{appliedCoupon.code}</p>
+                        </div>
+                      </div>
+                      <button onClick={removeCoupon} className="p-2 hover:bg-red-100 rounded-full text-red-400 transition-colors">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="pt-6 border-t border-gray-100 space-y-3">
                   <div className="flex justify-between text-xs font-bold uppercase"><span>Subtotal</span><span>R$ {subtotal.toFixed(2)}</span></div>
+                  
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-xs text-emerald-600 font-black uppercase">
+                      <span>Desconto Cupom</span>
+                      <span>- R$ {couponDiscountValue.toFixed(2)}</span>
+                    </div>
+                  )}
+
                   {usePoints && (
-                    <div className="flex justify-between text-xs text-green-600 font-black uppercase">
+                    <div className="flex justify-between text-xs text-blue-600 font-black uppercase">
                       <span>Desconto Pontos</span>
                       <span>- R$ {pointsValue.toFixed(2)}</span>
                     </div>
                   )}
+
                   <div className="flex justify-between text-xs text-gray-500 font-bold uppercase">
                     <span>Frete Local</span>
                     <span className={`${shipping === 0 ? 'text-green-600 font-black' : 'text-gray-900'}`}>

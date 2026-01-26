@@ -190,26 +190,22 @@ const ProductDetails = ({
 
             <div className="prose prose-blue max-w-none">
               <div className="space-y-8">
-                <h3 className="text-3xl font-black text-blue-900 leading-tight">O alívio imediato para o seu dia a dia.</h3>
+                <h3 className="text-3xl font-black text-blue-900 leading-tight">O que torna este produto único?</h3>
                 <div className="text-gray-600 leading-relaxed text-lg font-medium whitespace-pre-line">
                   {product.description}
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8">
-                  {[
-                    "Baixo consumo de energia via USB",
-                    "3 níveis de velocidade ajustáveis",
-                    "Tecnologia de resfriamento por névoa",
-                    "Reservatório fácil de abastecer",
-                    "Operação silenciosa para dormir",
-                    "Alça de transporte premium"
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-                      <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0" />
-                      <span className="text-blue-900 font-bold text-sm">{item}</span>
-                    </div>
-                  ))}
-                </div>
+                {/* Benefícios Dinâmicos */}
+                {product.benefits && product.benefits.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8">
+                    {product.benefits.map((benefit, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-blue-50/50 p-5 rounded-2xl border border-blue-100 shadow-sm transition-transform hover:scale-[1.02]">
+                        <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0" />
+                        <span className="text-blue-900 font-bold text-sm">{benefit}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
