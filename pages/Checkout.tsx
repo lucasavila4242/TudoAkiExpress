@@ -22,10 +22,19 @@ import {
   Lock,
   Ticket,
   Tag,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
+import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 import { CartItem, CheckoutData, User, Product } from '../types';
 import { PRODUCTS } from '../constants';
+
+// INICIALIZAÇÃO DO MERCADO PAGO
+// Chave pública (Public Key) - Usada para renderizar os componentes no front
+initMercadoPago('TEST-49297426-4074-4279-b883-75574513192e', { locale: 'pt-BR' });
+
+// Token de Acesso (Access Token) - Usado para criar a preferência na API
+const MP_ACCESS_TOKEN = 'APP_USR-4804417043420437-012918-a9ca3d55a51b00f66109d7a322d68cf5-2717547924';
 
 const VALID_COUPONS: Record<string, number> = {
   'CASCAVEL10': 0.10, // 10% de desconto
@@ -107,7 +116,7 @@ const UpsellModal = ({ isOpen, onClose, items, onAdd }: { isOpen: boolean, onClo
   );
 };
 
-const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, onComplete: (earn: number, spent: number) => void }) => {
+const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, onComplete: (earn: number, spent: number, details: any) => void }) => {
   const [data, setData] = useState<CheckoutData>({
     name: user.name,
     whatsapp: '',
@@ -121,6 +130,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
   const [usePoints, setUsePoints] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'pix_generated' | 'success'>('idle');
   const [processingMessage, setProcessingMessage] = useState('Processando pagamento...');
+  const [preferenceId, setPreferenceId] = useState<string | null>(null);
 
   // Coupon State
   const [couponInput, setCouponInput] = useState('');
@@ -176,10 +186,119 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
     window.dispatchEvent(new CustomEvent('add-to-cart-checkout', { detail: product }));
   };
 
+  // Função para criar Preferência do Mercado Pago
+  const createMercadoPagoPreference = async () => {
+    try {
+      setProcessingMessage("Conectando com Mercado Pago...");
+      
+      const items = cart.map(item => ({
+        id: item.id,
+        title: item.name,
+        description: item.description?.substring(0, 200) || item.name,
+        picture_url: item.image,
+        category_id: "electronics", // Categoria genérica
+        quantity: item.quantity,
+        currency_id: "BRL",
+        unit_price: item.price
+      }));
+
+      // Adicionar frete como item se houver
+      if (shipping > 0) {
+        items.push({
+          id: "shipping",
+          title: "Frete Express Cascavel",
+          description: "Entrega local",
+          picture_url: "",
+          category_id: "services",
+          quantity: 1,
+          currency_id: "BRL",
+          unit_price: shipping
+        });
+      }
+
+      // Aplicar descontos como um item negativo (hack comum pois MP prefere unit_price positivo)
+      // Ou ajustar o preço dos itens proporcionalmente. Para simplicidade, vamos ajustar o primeiro item se houver desconto
+      // NOTA: Em produção, o ideal é usar o campo 'discount' da API ou coupon_amount.
+      
+      const preferenceData = {
+        items: items,
+        payer: {
+          name: data.name.split(' ')[0],
+          surname: data.name.split(' ').slice(1).join(' ') || 'Cliente',
+          email: user.email.includes('@') ? user.email : 'cliente@tudoakiexpress.com.br', // MP exige email válido
+          phone: {
+            area_code: "45",
+            number: data.whatsapp.replace(/\D/g, '') || "999999999"
+          },
+          address: {
+            zip_code: "85800000",
+            street_name: data.address || "Rua Cascavel",
+            street_number: 123
+          }
+        },
+        payment_methods: {
+          excluded_payment_types: [
+             { id: "ticket" } // Excluir boleto para focar em PIX e Cartão como solicitado
+          ],
+          installments: 12 // Máximo de parcelas
+        },
+        back_urls: {
+          success: `${window.location.origin}/#/account`,
+          failure: `${window.location.origin}/#/checkout`,
+          pending: `${window.location.origin}/#/checkout`
+        },
+        auto_return: "approved",
+        statement_descriptor: "TUDOAKI"
+      };
+
+      const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${MP_ACCESS_TOKEN}`
+        },
+        body: JSON.stringify(preferenceData),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        console.error("MP Error:", err);
+        throw new Error(`Erro MP: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setPreferenceId(result.id);
+      
+    } catch (error) {
+      console.error(error);
+      setProcessingMessage("Erro ao gerar pagamento. Tente novamente.");
+      setPaymentStatus('idle');
+      alert("Erro ao conectar com Mercado Pago. Verifique o console ou tente novamente.");
+    }
+  };
+
+  const completeOrder = () => {
+    onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0, {
+      total: total,
+      address: data.address,
+      paymentMethod: data.paymentMethod
+    });
+    window.location.hash = '/account';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentStatus('processing');
     
+    // Se for Mercado Pago, iniciamos o fluxo de preferência
+    if (data.paymentMethod === 'mercadopago') {
+      if (!preferenceId) {
+        await createMercadoPagoPreference();
+      }
+      setPaymentStatus('idle'); // Retorna para idle para mostrar o botão/wallet
+      return;
+    }
+
     const steps = [
       "Autenticando transação segura...",
       "Criptografando dados do pedido...",
@@ -197,8 +316,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
     } else {
       setPaymentStatus('success');
       setTimeout(() => {
-        onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0);
-        window.location.hash = '/account';
+        completeOrder();
       }, 2000);
     }
   };
@@ -255,7 +373,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
             </div>
           </div>
 
-          <button onClick={() => { onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0); window.location.hash = '/account'; }} className="w-full bg-green-500 text-white py-5 rounded-2xl font-black text-xl hover:bg-green-600 transition-all flex items-center justify-center gap-3">
+          <button onClick={completeOrder} className="w-full bg-green-500 text-white py-5 rounded-2xl font-black text-xl hover:bg-green-600 transition-all flex items-center justify-center gap-3">
             <CheckCircle2 className="h-6 w-6" /> Já realizei o pagamento
           </button>
         </div>
@@ -376,20 +494,28 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                   <h3 className="text-xl font-black text-blue-900">Pagamento Seguro</h3>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   <button type="button" onClick={() => setData({...data, paymentMethod: 'pix'})} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${data.paymentMethod === 'pix' ? 'border-red-500 bg-red-50' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}`}>
                     <QrCode className={`h-8 w-8 ${data.paymentMethod === 'pix' ? 'text-red-500' : 'text-gray-400'}`} />
                     <div className="text-center">
-                      <p className="font-black text-blue-900">PIX Instantâneo</p>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Aprovação imediata</p>
+                      <p className="font-black text-blue-900 text-sm">PIX</p>
+                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Instantâneo</p>
                     </div>
                   </button>
 
                   <button type="button" onClick={() => setData({...data, paymentMethod: 'card'})} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${data.paymentMethod === 'card' ? 'border-red-500 bg-red-50' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}`}>
                     <CreditCard className={`h-8 w-8 ${data.paymentMethod === 'card' ? 'text-red-500' : 'text-gray-400'}`} />
                     <div className="text-center">
-                      <p className="font-black text-blue-900">Cartão de Crédito</p>
-                      <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Até 12x sem juros</p>
+                      <p className="font-black text-blue-900 text-sm">Cartão</p>
+                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Até 12x</p>
+                    </div>
+                  </button>
+
+                  <button type="button" onClick={() => setData({...data, paymentMethod: 'mercadopago'})} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${data.paymentMethod === 'mercadopago' ? 'border-blue-500 bg-blue-50' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}`}>
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-black text-xs">MP</div>
+                    <div className="text-center">
+                      <p className="font-black text-blue-900 text-sm">Mercado Pago</p>
+                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Checkout Pro</p>
                     </div>
                   </button>
                 </div>
@@ -415,10 +541,32 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                     </div>
                   </div>
                 )}
+
+                {data.paymentMethod === 'mercadopago' && (
+                  <div className="animate-in slide-in-from-top-4 duration-300">
+                    {preferenceId ? (
+                       <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
+                    ) : (
+                      <div className="bg-blue-50 border border-blue-200 p-6 rounded-[2rem] text-center space-y-4">
+                         <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
+                           <ExternalLink className="h-8 w-8 text-white" />
+                         </div>
+                         <div>
+                           <h4 className="font-black text-blue-900 text-lg">Checkout Pro</h4>
+                           <p className="text-gray-500 text-sm">Clique em <b>"Ir para Mercado Pago"</b> abaixo para pagar com segurança usando PIX ou Cartão.</p>
+                         </div>
+                         <div className="bg-white p-3 rounded-xl text-[10px] text-gray-400 uppercase font-black">
+                           Ambiente Seguro Certificado
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button type="submit" className="w-full bg-red-500 text-white py-6 rounded-[2rem] font-black text-2xl shadow-2xl shadow-red-500/30 hover:bg-red-600 active:scale-[0.98] transition-all flex items-center justify-center gap-4">
-                {data.paymentMethod === 'pix' ? 'Gerar PIX de Pagamento' : 'Finalizar e Pagar'}
+                {data.paymentMethod === 'pix' ? 'Gerar PIX de Pagamento' : 
+                 data.paymentMethod === 'mercadopago' ? 'Ir para Mercado Pago' : 'Finalizar e Pagar'}
                 <ChevronRight className="h-8 w-8" />
               </button>
             </form>

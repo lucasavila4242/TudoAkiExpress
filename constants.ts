@@ -101,6 +101,30 @@ export const TESTIMONIALS: Testimonial[] = [
 
 export const PRODUCTS: Product[] = [
   {
+    id: 'test-checkout-01',
+    name: '[TESTE] Integração Mercado Pago',
+    description: '⚠️ PRODUTO EXCLUSIVO PARA TESTES DE DESENVOLVIMENTO.\n\nUtilize este item para validar o fluxo de pagamento do Checkout Pro (PIX e Cartão) com valor simbólico de R$ 0,01. Não haverá entrega física deste item.',
+    price: 0.01,
+    originalPrice: 1.00,
+    image: 'https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$+0,01',
+    images: ['https://placehold.co/600x600/EF4444/FFFFFF/png?text=CHECKOUT+PRO'],
+    category: 'Eletrônicos',
+    rating: 5.0,
+    reviewsCount: 999,
+    stock: 1000,
+    deliveryToday: true,
+    isBestSeller: false,
+    hasFreeShipping: true,
+    tags: ['Teste', 'Dev'],
+    upsellIds: [],
+    benefits: [
+      "Validação de PIX",
+      "Validação de Cartão",
+      "Fluxo de Pedidos",
+      "Teste de Status"
+    ]
+  },
+  {
     id: '11',
     name: 'Fone Bluetooth Lenovo Profissional',
     description: '🔊 Som potente e estéreo com graves reforçados\n🎮 Modo gamer com baixa latência para jogos\n🎵 Modo música com qualidade HD\n🎙️ Microfone embutido para chamadas nítidas\n📱 Bluetooth 5.3 – conexão rápida e estável\n⚡ Toque sensível – controles por toque\n🔋 Autonomia: até 4h por carga / 20h com o estojo\n💡 Display digital mostra o nível da bateria\n💼 Case compacta e moderna',

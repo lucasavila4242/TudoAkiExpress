@@ -30,6 +30,19 @@ export interface UserActivity {
   timestamp: string;
 }
 
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered';
+
+export interface Order {
+  id: string;
+  userId: string;
+  items: CartItem[];
+  total: number;
+  status: OrderStatus;
+  timestamp: string;
+  address: string;
+  paymentMethod: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -44,6 +57,7 @@ export interface User {
   persistedCart: CartItem[];
   persistedWishlist: string[];
   activityLog: UserActivity[];
+  lastCartUpdate?: string; // Timestamp da última alteração no carrinho
 }
 
 export interface OrderLead {
@@ -60,7 +74,7 @@ export interface CheckoutData {
   address: string;
   deliveryMethod: DeliveryMethod;
   deliveryTime?: string;
-  paymentMethod: 'pix' | 'card' | 'cash';
+  paymentMethod: 'pix' | 'card' | 'cash' | 'mercadopago';
   pointsToRedeem?: number;
   couponCode?: string;
 }
