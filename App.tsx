@@ -356,7 +356,20 @@ export default function App() {
             <Route path="/store" element={<Store addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
             <Route path="/product/:id" element={<ProductDetails addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
             <Route path="/checkout" element={<Checkout cart={cart} user={user || { name: 'Visitante', points: 0, lifetimePoints: 0, tier: 'Bronze', id: 'guest', email: '', whatsapp: '', persistedCart: [], persistedWishlist: [], activityLog: [] } as any} onComplete={onOrderComplete} />} />
-            <Route path="/account" element={<Account user={user} wishlist={wishlist} orders={orders.filter(o => o.userId === user?.id)} toggleWishlist={toggleWishlist} addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} onOpenAuth={() => setIsAuthModalOpen(true)} />} />
+            <Route 
+              path="/account" 
+              element={
+                <Account 
+                  user={user} 
+                  wishlist={wishlist} 
+                  orders={orders.filter(o => o.userId === user?.id)} 
+                  toggleWishlist={toggleWishlist} 
+                  addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} 
+                  onOpenAuth={() => setIsAuthModalOpen(true)}
+                  updateOrderStatus={updateOrderStatus}
+                />
+              } 
+            />
             <Route path="/admin" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} />} />
           </Routes>
         </main>

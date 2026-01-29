@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Award, 
   ShoppingBag, 
@@ -20,12 +20,14 @@ import {
   ArrowRight,
   Package,
   Truck,
-  CheckCircle2
+  CheckCircle2,
+  X,
+  PartyPopper
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus } from '../types';
 import { PRODUCTS } from '../constants';
 import ProductCard from '../components/ProductCard';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const OrderStatusStepper = ({ status }: { status: OrderStatus }) => {
   const steps = [
@@ -69,22 +71,83 @@ const OrderStatusStepper = ({ status }: { status: OrderStatus }) => {
   );
 };
 
+const PaymentSuccessModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-blue-900/80 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-sm rounded-[3rem] p-8 text-center shadow-2xl animate-in zoom-in-95 border-4 border-white">
+        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+          <PartyPopper className="h-10 w-10 text-green-600 animate-bounce" />
+          <div className="absolute inset-0 rounded-full border-4 border-green-50 animate-ping opacity-25" />
+        </div>
+        <h2 className="text-2xl font-black text-blue-900 mb-2">Pagamento Confirmado!</h2>
+        <p className="text-gray-500 text-sm mb-6">Recebemos seu pagamento com sucesso. Seu pedido já foi enviado para <strong className="text-blue-900">separação imediata</strong> no estoque.</p>
+        
+        <div className="bg-gray-50 rounded-2xl p-4 mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Clock className="h-5 w-5 text-red-500" />
+            <span className="text-xs font-black uppercase text-gray-400">Previsão</span>
+          </div>
+          <p className="font-bold text-blue-900">Entrega Hoje até as 18h</p>
+        </div>
+
+        <button onClick={onClose} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-blue-800 transition-all">
+          Acompanhar Pedido
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const Account = ({ 
   user, 
   wishlist, 
   orders = [],
   toggleWishlist, 
   addToCart,
-  onOpenAuth
+  onOpenAuth,
+  updateOrderStatus
 }: { 
   user: User | null, 
   wishlist: string[], 
   orders: Order[],
   toggleWishlist: (id: string) => void,
   addToCart: (p: Product) => void,
-  onOpenAuth: () => void
+  onOpenAuth: () => void,
+  updateOrderStatus: (id: string, s: OrderStatus) => void
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>('profile');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Verifica retorno do Mercado Pago
+  useEffect(() => {
+    // Verifica tanto no hash search quanto no search global para garantir
+    const params = new URLSearchParams(location.search || window.location.search);
+    const status = params.get('collection_status');
+    const paymentId = params.get('payment_id');
+
+    if (status === 'approved' && paymentId) {
+      // Encontra o pedido pendente mais recente deste usuário
+      const pendingOrders = orders
+        .filter(o => o.status === 'pending')
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      if (pendingOrders.length > 0) {
+        const latestOrder = pendingOrders[0];
+        // Atualiza para 'processing' (Em Separação)
+        updateOrderStatus(latestOrder.id, 'processing');
+        setShowSuccessModal(true);
+        setActiveTab('orders'); // Muda para a aba de pedidos automaticamente
+      }
+      
+      // Limpa a URL para evitar reprocessamento ao recarregar
+      navigate('/account', { replace: true });
+    }
+  }, [location, orders, updateOrderStatus, navigate]);
 
   const tiers = {
     'Bronze': { color: 'text-amber-600', bg: 'bg-amber-100', next: 500 },
@@ -114,6 +177,8 @@ const Account = ({
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20 pt-10 px-4 sm:px-6 lg:px-8">
+      <PaymentSuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+      
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Header Tabs */}
