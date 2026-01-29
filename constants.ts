@@ -102,11 +102,11 @@ export const TESTIMONIALS: Testimonial[] = [
 export const PRODUCTS: Product[] = [
   {
     id: 'test-checkout-01',
-    name: '[TESTE] Integração Mercado Pago',
-    description: '⚠️ PRODUTO EXCLUSIVO PARA TESTES DE DESENVOLVIMENTO.\n\nUtilize este item para validar o fluxo de pagamento do Checkout Pro (PIX e Cartão) com valor simbólico de R$ 0,01. Não haverá entrega física deste item.',
-    price: 0.01,
-    originalPrice: 1.00,
-    image: 'https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$+0,01',
+    name: '[TESTE] Integração Mercado Pago (Com Frete)',
+    description: '⚠️ PRODUTO EXCLUSIVO PARA TESTES DE DESENVOLVIMENTO.\n\nUtilize este item para validar o fluxo de pagamento do Checkout Pro (PIX e Cartão) com valor de R$ 2,00 + Frete Simbólico.',
+    price: 2.00,
+    originalPrice: 5.00,
+    image: 'https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$2',
     images: ['https://placehold.co/600x600/EF4444/FFFFFF/png?text=CHECKOUT+PRO'],
     category: 'Eletrônicos',
     rating: 5.0,
@@ -114,13 +114,13 @@ export const PRODUCTS: Product[] = [
     stock: 1000,
     deliveryToday: true,
     isBestSeller: false,
-    hasFreeShipping: true,
+    hasFreeShipping: false,
     tags: ['Teste', 'Dev'],
     upsellIds: [],
     benefits: [
       "Validação de PIX",
       "Validação de Cartão",
-      "Fluxo de Pedidos",
+      "Teste de Cobrança de Frete",
       "Teste de Status"
     ]
   },
@@ -142,7 +142,7 @@ export const PRODUCTS: Product[] = [
     stock: 25,
     deliveryToday: true,
     isBestSeller: true,
-    hasFreeShipping: true,
+    hasFreeShipping: false,
     tags: ['Lançamento', 'Gamer', 'Lenovo'],
     upsellIds: [],
     benefits: [
@@ -203,7 +203,7 @@ export const PRODUCTS: Product[] = [
     stock: 15,
     deliveryToday: true,
     isBestSeller: true,
-    hasFreeShipping: true,
+    hasFreeShipping: false,
     tags: ['Calor', 'Promoção', 'Top 1'],
     upsellIds: [],
     benefits: [
