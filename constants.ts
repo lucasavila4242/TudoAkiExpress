@@ -102,13 +102,13 @@ export const TESTIMONIALS: Testimonial[] = [
 export const PRODUCTS: Product[] = [
   {
     id: 'test-checkout-01',
-    name: '[TESTE] Integração Mercado Pago (Com Frete)',
-    description: '⚠️ PRODUTO EXCLUSIVO PARA TESTES DE DESENVOLVIMENTO.\n\nUtilize este item para validar o fluxo de pagamento do Checkout Pro (PIX e Cartão) com valor de R$ 2,00 + Frete Simbólico.',
+    name: 'Produto de Teste - Validação',
+    description: 'Este produto é destinado a testes de funcionalidade da plataforma. Ao adquiri-lo, você ajuda a validar o fluxo de pagamento e entrega.\n\nO valor é simbólico (R$ 2,00) e o frete será ajustado automaticamente para R$ 0,01 no checkout.',
     price: 2.00,
     originalPrice: 5.00,
     image: 'https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$2',
-    images: ['https://placehold.co/600x600/EF4444/FFFFFF/png?text=CHECKOUT+PRO'],
-    category: 'Eletrônicos',
+    images: ['https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$2'],
+    category: 'Testes',
     rating: 5.0,
     reviewsCount: 999,
     stock: 1000,
@@ -217,4 +217,4 @@ export const PRODUCTS: Product[] = [
   }
 ];
 
-export const CATEGORIES = ['Todos', 'Eletrônicos', 'Acessórios', 'Casa'];
+export const CATEGORIES = ['Todos', 'Eletrônicos', 'Acessórios', 'Casa', 'Testes'];
