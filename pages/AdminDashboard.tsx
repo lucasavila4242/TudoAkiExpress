@@ -16,7 +16,9 @@ import {
   Zap,
   CheckCircle2,
   Package,
-  Truck
+  Truck,
+  MapPin,
+  Banknote
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
@@ -76,11 +78,33 @@ Dúvidas? Estamos aqui para ajudar!`;
     window.open(`https://wa.me/55${whatsapp}?text=${encoded}`, '_blank');
   };
 
-  const nextStatus = (current: OrderStatus): OrderStatus | null => {
+  // Lógica de Avanço de Status Personalizada
+  const getNextAction = (current: OrderStatus) => {
     switch(current) {
-      case 'pending': return 'processing';
-      case 'processing': return 'shipped';
-      case 'shipped': return 'delivered';
+      case 'pending': 
+        return { 
+          next: 'processing' as OrderStatus, 
+          label: 'Aprovar & Separar', 
+          icon: Package,
+          color: 'bg-emerald-600 hover:bg-emerald-700',
+          desc: 'Liberar para Estoque'
+        };
+      case 'processing': 
+        return { 
+          next: 'shipped' as OrderStatus, 
+          label: 'Despachar Entrega', 
+          icon: Truck,
+          color: 'bg-amber-500 hover:bg-amber-600',
+          desc: 'Enviar Motoboy'
+        };
+      case 'shipped': 
+        return { 
+          next: 'delivered' as OrderStatus, 
+          label: 'Confirmar Entrega', 
+          icon: CheckCircle2,
+          color: 'bg-blue-600 hover:bg-blue-700',
+          desc: 'Finalizar Pedido'
+        };
       default: return null;
     }
   };
@@ -115,6 +139,11 @@ Dúvidas? Estamos aqui para ajudar!`;
             <p className="text-red-100 text-xs font-black uppercase mb-2">Pedidos Totais</p>
             <h2 className="text-5xl font-black">{orders.length}</h2>
           </div>
+          <div className="bg-emerald-600 p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
+            <div className="absolute -right-4 -bottom-4 opacity-10"><Banknote size={120} /></div>
+            <p className="text-emerald-100 text-xs font-black uppercase mb-2">Receita Total</p>
+            <h2 className="text-5xl font-black">R$ {orders.reduce((acc, o) => acc + o.total, 0).toFixed(0)}</h2>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -135,7 +164,7 @@ Dúvidas? Estamos aqui para ajudar!`;
             onClick={() => setActiveTab('orders')}
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-blue-900 text-white shadow-lg' : 'text-gray-500 hover:text-blue-900'}`}
           >
-            Logística / Entregas {orders.filter(o => o.status !== 'delivered').length > 0 && <span className="bg-white text-blue-900 px-2 py-0.5 rounded-md text-[9px]">{orders.filter(o => o.status !== 'delivered').length}</span>}
+            Controle Logístico {orders.filter(o => o.status !== 'delivered').length > 0 && <span className="bg-white text-blue-900 px-2 py-0.5 rounded-md text-[9px]">{orders.filter(o => o.status !== 'delivered').length}</span>}
           </button>
         </div>
 
@@ -199,54 +228,87 @@ Dúvidas? Estamos aqui para ajudar!`;
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    <th className="px-8 py-5">Protocolo / Data</th>
-                    <th className="px-8 py-5">Destino</th>
+                    <th className="px-8 py-5">ID / Data</th>
+                    <th className="px-8 py-5">Detalhes do Pedido</th>
                     <th className="px-8 py-5">Status Atual</th>
-                    <th className="px-8 py-5 text-center">Gestão Logística</th>
+                    <th className="px-8 py-5 text-center">Ação do Proprietário</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-blue-50/30 transition-colors">
-                      <td className="px-8 py-6">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-black text-blue-900">{order.id}</span>
-                          <span className="text-[10px] text-gray-400 font-bold">{new Date(order.timestamp).toLocaleString()}</span>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-gray-700 truncate w-48">{order.address}</span>
-                          <span className="text-[10px] text-blue-500 font-black uppercase">R$ {order.total.toFixed(2)}</span>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                          order.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                          order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                          order.status === 'processing' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
-                        }`}>
-                          {order.status === 'pending' ? 'Pendente' : 
-                           order.status === 'processing' ? 'Separando' : 
-                           order.status === 'shipped' ? 'Em Rota' : 'Entregue'}
-                        </span>
-                      </td>
-                      <td className="px-8 py-6 text-center">
-                        {nextStatus(order.status) ? (
-                          <button 
-                            onClick={() => updateOrderStatus(order.id, nextStatus(order.status)!)}
-                            className="bg-blue-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 transition-all flex items-center gap-2 mx-auto"
-                          >
-                            <Zap size={14} className="fill-white" /> Avançar Etapa
-                          </button>
-                        ) : (
-                          <span className="text-green-500 font-black text-[10px] uppercase flex items-center justify-center gap-2">
-                            <CheckCircle2 size={16} /> Finalizado
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {orders.map((order) => {
+                    const action = getNextAction(order.status);
+                    
+                    return (
+                      <tr key={order.id} className="hover:bg-blue-50/30 transition-colors">
+                        <td className="px-8 py-6 align-top">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-black text-blue-900">{order.id}</span>
+                            <span className="text-[10px] text-gray-400 font-bold">{new Date(order.timestamp).toLocaleString()}</span>
+                            <div className="mt-2 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-md w-fit">
+                              {order.paymentMethod.toUpperCase()}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6 align-top">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-start gap-2">
+                              <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
+                              <span className="text-xs font-bold text-gray-700 w-48">{order.address}</span>
+                            </div>
+                            <div className="space-y-1 mt-1">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="text-[10px] text-gray-500 flex justify-between w-48 border-b border-gray-100 pb-1">
+                                  <span>{item.quantity}x {item.name.substring(0, 20)}...</span>
+                                  <span className="font-bold">R$ {(item.price * item.quantity).toFixed(0)}</span>
+                                </div>
+                              ))}
+                              <div className="flex justify-between w-48 pt-1">
+                                <span className="text-[10px] font-black uppercase text-blue-900">Total</span>
+                                <span className="text-xs font-black text-red-500">R$ {order.total.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6 align-top">
+                           <div className="flex flex-col gap-2">
+                            <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter w-fit flex items-center gap-2 ${
+                              order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                              order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                              order.status === 'processing' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {order.status === 'pending' ? <Clock size={12}/> : 
+                               order.status === 'processing' ? <Package size={12}/> : 
+                               order.status === 'shipped' ? <Truck size={12}/> : <CheckCircle2 size={12}/>}
+                              
+                              {order.status === 'pending' ? 'Pendente' : 
+                               order.status === 'processing' ? 'Em Separação' : 
+                               order.status === 'shipped' ? 'Em Rota' : 'Entregue'}
+                            </span>
+                            {order.status === 'pending' && <span className="text-[9px] text-red-400 font-bold">Aguardando Pagamento ou Confirmação</span>}
+                          </div>
+                        </td>
+                        <td className="px-8 py-6 text-center align-top">
+                          {action ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <button 
+                                onClick={() => updateOrderStatus(order.id, action.next)}
+                                className={`${action.color} text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center gap-2 w-full justify-center active:scale-95`}
+                              >
+                                <action.icon size={14} className="fill-white/20" /> {action.label}
+                              </button>
+                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{action.desc}</span>
+                            </div>
+                          ) : (
+                            <div className="bg-green-50 p-3 rounded-xl border border-green-100">
+                              <span className="text-green-600 font-black text-[10px] uppercase flex items-center justify-center gap-2">
+                                <CheckCircle2 size={16} /> Ciclo Finalizado
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {orders.length === 0 && (
                     <tr><td colSpan={4} className="py-20 text-center opacity-20 font-black uppercase tracking-widest">Nenhum pedido no sistema</td></tr>
                   )}
