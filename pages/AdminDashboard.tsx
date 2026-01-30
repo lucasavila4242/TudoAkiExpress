@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
   Smartphone, 
@@ -18,14 +18,15 @@ import {
   Package,
   Truck,
   MapPin,
-  Banknote
+  Banknote,
+  RefreshCcw
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
 
 const AdminDashboard = ({ 
   currentUser, 
-  orders = [],
+  orders: propOrders = [], // Renomeado para diferenciar do estado local
   updateOrderStatus 
 }: { 
   currentUser: User | null, 
@@ -33,6 +34,33 @@ const AdminDashboard = ({
   updateOrderStatus: (id: string, s: OrderStatus) => void
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'abandoned' | 'orders'>('users');
+  const [localOrders, setLocalOrders] = useState<Order[]>(propOrders);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Sincroniza com as props iniciais, mas permite atualização manual
+  useEffect(() => {
+    fetchOrdersFromDB();
+  }, [propOrders]);
+
+  // Função para ler diretamente do "Banco de Dados" (LocalStorage)
+  const fetchOrdersFromDB = () => {
+    setIsRefreshing(true);
+    try {
+      const savedOrders = localStorage.getItem('aki_orders');
+      if (savedOrders) {
+        const parsed: Order[] = JSON.parse(savedOrders);
+        // Ordena do mais recente para o mais antigo
+        parsed.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setLocalOrders(parsed);
+      } else {
+        setLocalOrders([]);
+      }
+    } catch (error) {
+      console.error("Erro ao sincronizar pedidos:", error);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500); // Feedback visual rápido
+    }
+  };
 
   if (!currentUser || !currentUser.isAdmin) {
     return <Navigate to="/" />;
@@ -41,7 +69,7 @@ const AdminDashboard = ({
   const allUsers: User[] = useMemo(() => {
     const users = JSON.parse(localStorage.getItem('aki_users') || '[]');
     return users.filter((u: any) => u.email !== 'lucasaviladark@gmail.com');
-  }, []);
+  }, [isRefreshing]); // Recarrega usuários também ao atualizar
 
   const abandonedCarts = useMemo(() => {
     return allUsers.filter(u => u.persistedCart && u.persistedCart.length > 0);
@@ -109,6 +137,12 @@ Dúvidas? Estamos aqui para ajudar!`;
     }
   };
 
+  const handleUpdateStatus = (id: string, nextStatus: OrderStatus) => {
+    updateOrderStatus(id, nextStatus);
+    // Pequeno delay para permitir que o React propague a mudança e salvamento no LocalStorage
+    setTimeout(() => fetchOrdersFromDB(), 100); 
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -118,7 +152,16 @@ Dúvidas? Estamos aqui para ajudar!`;
             <Link to="/account" className="inline-flex items-center gap-2 text-xs font-black text-red-500 uppercase tracking-widest hover:underline mb-2">
               <ArrowLeft className="h-3 w-3" /> Painel da Minha Conta
             </Link>
-            <h1 className="text-4xl font-black text-blue-900 tracking-tighter">Gestão de Vendas Cascavel</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-4xl font-black text-blue-900 tracking-tighter">Gestão de Vendas Cascavel</h1>
+              <button 
+                onClick={fetchOrdersFromDB} 
+                className={`p-2 rounded-full bg-white border border-gray-200 text-blue-900 shadow-sm hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`}
+                title="Sincronizar Banco de Dados"
+              >
+                <RefreshCcw size={20} />
+              </button>
+            </div>
             <p className="text-gray-500 font-medium">Controle total de clientes, leads e logística.</p>
           </div>
         </div>
@@ -137,12 +180,12 @@ Dúvidas? Estamos aqui para ajudar!`;
           <div className="bg-red-600 p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
             <div className="absolute -right-4 -bottom-4 opacity-10"><Truck size={120} /></div>
             <p className="text-red-100 text-xs font-black uppercase mb-2">Pedidos Totais</p>
-            <h2 className="text-5xl font-black">{orders.length}</h2>
+            <h2 className="text-5xl font-black">{localOrders.length}</h2>
           </div>
           <div className="bg-emerald-600 p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
             <div className="absolute -right-4 -bottom-4 opacity-10"><Banknote size={120} /></div>
             <p className="text-emerald-100 text-xs font-black uppercase mb-2">Receita Total</p>
-            <h2 className="text-5xl font-black">R$ {orders.reduce((acc, o) => acc + o.total, 0).toFixed(0)}</h2>
+            <h2 className="text-5xl font-black">R$ {localOrders.reduce((acc, o) => acc + o.total, 0).toFixed(0)}</h2>
           </div>
         </div>
 
@@ -164,7 +207,7 @@ Dúvidas? Estamos aqui para ajudar!`;
             onClick={() => setActiveTab('orders')}
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-blue-900 text-white shadow-lg' : 'text-gray-500 hover:text-blue-900'}`}
           >
-            Controle Logístico {orders.filter(o => o.status !== 'delivered').length > 0 && <span className="bg-white text-blue-900 px-2 py-0.5 rounded-md text-[9px]">{orders.filter(o => o.status !== 'delivered').length}</span>}
+            Controle Logístico {localOrders.filter(o => o.status !== 'delivered').length > 0 && <span className="bg-white text-blue-900 px-2 py-0.5 rounded-md text-[9px]">{localOrders.filter(o => o.status !== 'delivered').length}</span>}
           </button>
         </div>
 
@@ -235,7 +278,7 @@ Dúvidas? Estamos aqui para ajudar!`;
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {orders.map((order) => {
+                  {localOrders.map((order) => {
                     const action = getNextAction(order.status);
                     
                     return (
@@ -291,7 +334,7 @@ Dúvidas? Estamos aqui para ajudar!`;
                           {action ? (
                             <div className="flex flex-col items-center gap-2">
                               <button 
-                                onClick={() => updateOrderStatus(order.id, action.next)}
+                                onClick={() => handleUpdateStatus(order.id, action.next)}
                                 className={`${action.color} text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center gap-2 w-full justify-center active:scale-95`}
                               >
                                 <action.icon size={14} className="fill-white/20" /> {action.label}
@@ -309,7 +352,7 @@ Dúvidas? Estamos aqui para ajudar!`;
                       </tr>
                     );
                   })}
-                  {orders.length === 0 && (
+                  {localOrders.length === 0 && (
                     <tr><td colSpan={4} className="py-20 text-center opacity-20 font-black uppercase tracking-widest">Nenhum pedido no sistema</td></tr>
                   )}
                 </tbody>
