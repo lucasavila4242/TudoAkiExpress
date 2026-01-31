@@ -58,6 +58,7 @@ export interface User {
   persistedWishlist: string[];
   activityLog: UserActivity[];
   lastCartUpdate?: string; // Timestamp da última alteração no carrinho
+  createdAt?: string; // Data de cadastro do cliente
 }
 
 export interface OrderLead {

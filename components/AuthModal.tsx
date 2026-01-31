@@ -54,6 +54,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
           isAdmin: isLoggingAsOwner,
           persistedCart: [],
           persistedWishlist: [],
+          createdAt: new Date().toISOString(), // Data de Cadastro
           activityLog: [{
             id: 'initial',
             type: 'auth',

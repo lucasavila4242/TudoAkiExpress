@@ -16,12 +16,14 @@ import {
   AlertTriangle,
   CreditCard,
   Zap,
-  Filter
+  Filter,
+  Mail,
+  Award
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 const AdminDashboard = ({ 
   currentUser, 
@@ -43,16 +45,26 @@ const AdminDashboard = ({
   useEffect(() => {
     if (!currentUser || !currentUser.isAdmin) return;
 
+    // Tenta ordenar se possível, senão pega padrão
     const q = query(collection(db, "users"));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const usersList: User[] = [];
         snapshot.forEach((doc) => {
             const userData = doc.data() as User;
-            // Filtra o próprio admin da lista se desejar, mas mantém aqui para métricas
+            // Filtra o próprio admin da lista (opcional, aqui mantemos fora pra não poluir)
             if (userData.email !== 'lucasaviladark@gmail.com') {
                 usersList.push({ ...userData, id: doc.id });
             }
         });
+        
+        // Ordena localmente por data de criação (se existir) ou nome
+        usersList.sort((a, b) => {
+           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+           return dateB - dateA;
+        });
+
         setAllUsers(usersList);
     });
 
@@ -122,7 +134,6 @@ Dúvidas? Estamos aqui para ajudar!`;
     window.open(`https://wa.me/55${whatsapp}?text=${encoded}`, '_blank');
   };
 
-  // --- LÓGICA DOS BOTÕES DE AÇÃO ---
   const getNextAction = (current: OrderStatus) => {
     switch(current) {
       case 'pending': 
@@ -235,9 +246,9 @@ Dúvidas? Estamos aqui para ajudar!`;
                 <>
                     <button 
                         onClick={() => setActiveTab('users')}
-                        className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-white text-blue-900 shadow-sm' : 'text-gray-500 hover:text-blue-900'}`}
+                        className={`px-4 sm:px-6 py-2.5 rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'users' ? 'bg-white text-blue-900 shadow-sm' : 'text-gray-500 hover:text-blue-900'}`}
                     >
-                        Clientes
+                        Clientes <span className="bg-blue-100 text-blue-900 px-1.5 py-0.5 rounded text-[9px]">{allUsers.length}</span>
                     </button>
                     <button 
                         onClick={() => setActiveTab('abandoned')}
@@ -404,32 +415,74 @@ Dúvidas? Estamos aqui para ajudar!`;
             </div>
           )}
 
-          {/* TAB: CLIENTES (Código original mantido para integridade) */}
+          {/* TAB: CLIENTES (ATUALIZADA) */}
           {activeTab === 'users' && (
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      <th className="px-8 py-5">Cliente</th>
-                      <th className="px-8 py-5">WhatsApp</th>
-                      <th className="px-8 py-5 text-center">Nível</th>
-                      <th className="px-8 py-5 text-center">Contato</th>
+                      <th className="px-6 py-4">Cliente</th>
+                      <th className="px-6 py-4">Contato (E-mail / Whats)</th>
+                      <th className="px-6 py-4">Fidelidade</th>
+                      <th className="px-6 py-4 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {allUsers.map((user) => (
                       <tr key={user.id} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="px-8 py-6">
+                        <td className="px-6 py-6">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 bg-blue-900 text-white rounded-xl flex items-center justify-center font-black">{user.name?.charAt(0) || 'U'}</div>
-                            <span className="text-sm font-bold text-blue-900">{user.name}</span>
+                            <div>
+                                <span className="text-sm font-bold text-blue-900 block">{user.name}</span>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase block mt-1">
+                                    Membro desde: {user.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : 'Data não reg.'}
+                                </span>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-8 py-6"><span className="text-sm font-black text-gray-700 bg-gray-100 px-3 py-1.5 rounded-lg">{user.whatsapp}</span></td>
-                        <td className="px-8 py-6 text-center"><span className="px-3 py-1 bg-amber-100 text-amber-600 rounded-full text-[10px] font-black uppercase">{user.tier}</span></td>
-                        <td className="px-8 py-6 text-center"><a href={`https://wa.me/55${(user.whatsapp || '').replace(/\D/g, '')}`} target="_blank" className="text-green-500 hover:bg-green-50 p-2 rounded-lg inline-block"><MessageCircle /></a></td>
+                        <td className="px-6 py-6">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Mail size={14} className="text-gray-400" />
+                                    <span className="text-xs font-medium text-gray-600">{user.email}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <MessageCircle size={14} className="text-green-500" />
+                                    <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">{user.whatsapp}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td className="px-6 py-6">
+                             <div className="flex items-center gap-4">
+                                <div>
+                                    <span className={`block w-fit px-3 py-1 mb-1 rounded-full text-[10px] font-black uppercase ${
+                                        user.tier === 'Ouro' ? 'bg-amber-100 text-amber-600' : 
+                                        user.tier === 'Prata' ? 'bg-gray-100 text-gray-600' : 'bg-orange-100 text-orange-700'
+                                    }`}>
+                                        {user.tier}
+                                    </span>
+                                    <div className="flex items-center gap-1 text-xs font-bold text-blue-900">
+                                        <Award size={14} className="text-amber-500" />
+                                        {user.points} pts
+                                    </div>
+                                </div>
+                             </div>
+                        </td>
+                        <td className="px-6 py-6 text-center">
+                            <a href={`https://wa.me/55${(user.whatsapp || '').replace(/\D/g, '')}`} target="_blank" className="bg-green-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-green-600 transition-all shadow-md inline-flex items-center gap-2">
+                                <MessageCircle size={14} /> Conversar
+                            </a>
+                        </td>
                       </tr>
                     ))}
+                    {allUsers.length === 0 && (
+                        <tr>
+                            <td colSpan={4} className="text-center py-10 text-gray-400 font-bold text-sm">
+                                Nenhum cliente capturado ainda.
+                            </td>
+                        </tr>
+                    )}
                   </tbody>
                 </table>
             </div>
