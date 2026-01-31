@@ -421,7 +421,12 @@ Dúvidas? Estamos aqui para ajudar!`;
                     })}
                     {filteredOrders.length === 0 && (
                       <tr><td colSpan={4} className={`py-20 text-center opacity-20 font-black uppercase tracking-widest ${isLogisticsView ? 'text-slate-500' : 'text-gray-300'}`}>
-                        {searchQuery ? 'Nenhum pedido encontrado com este protocolo' : 'Nenhum pedido no sistema'}
+                        {searchQuery ? 'Nenhum pedido encontrado com este protocolo' : (
+                            <div className="flex flex-col items-center gap-2">
+                                <span>Aguardando novos pedidos...</span>
+                                <span className="text-[9px] opacity-60 max-w-xs leading-relaxed">(Nota: Como este é um sistema demonstrativo sem Backend Real, apenas pedidos feitos <b>neste dispositivo/navegador</b> aparecerão aqui.)</span>
+                            </div>
+                        )}
                       </td></tr>
                     )}
                   </tbody>

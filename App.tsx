@@ -95,9 +95,9 @@ const Navbar = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Atalho Discreto para Logística */}
-            <Link to="/logistica" className="hidden lg:flex items-center gap-2 text-gray-400 hover:text-blue-900 transition-colors" title="Acesso Logístico">
-              <Package className="h-4 w-4" />
+            {/* Atalho para Logística (Visível Mobile) */}
+            <Link to="/logistica" className="flex items-center gap-2 p-2 text-gray-400 hover:text-blue-900 transition-colors" title="Terminal Logístico">
+              <Package className="h-5 w-5" />
             </Link>
 
             {user?.isAdmin && (
