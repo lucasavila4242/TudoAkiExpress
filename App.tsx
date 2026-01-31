@@ -188,10 +188,7 @@ const CartSidebar = ({ isOpen, onClose, cart, updateQuantity, navigateToCheckout
 export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('aki_orders');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showRecoveryNudge, setShowRecoveryNudge] = useState(false);
@@ -199,6 +196,25 @@ export default function App() {
     const saved = localStorage.getItem('aki_current_user');
     return saved ? JSON.parse(saved) : null;
   });
+
+  // Carrega pedidos iniciais
+  useEffect(() => {
+    syncOrders();
+    // Escuta mudanças no LocalStorage (para sincronizar abas)
+    window.addEventListener('storage', syncOrders);
+    return () => window.removeEventListener('storage', syncOrders);
+  }, []);
+
+  const syncOrders = () => {
+    try {
+      const saved = localStorage.getItem('aki_orders');
+      if (saved) {
+        setOrders(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error("Erro ao sincronizar pedidos", e);
+    }
+  };
 
   const updateDB = useCallback((updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
@@ -227,12 +243,11 @@ export default function App() {
       setCart(user.persistedCart || []);
       setWishlist(user.persistedWishlist || []);
       
-      // Mostrar lembrete de carrinho se tiver itens de uma sessão anterior
       if (user.persistedCart?.length > 0) {
         const lastUpdate = new Date(user.lastCartUpdate || 0);
         const now = new Date();
         const diffInHours = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
-        if (diffInHours > 0.5) { // Se o carrinho tem mais de 30 minutos
+        if (diffInHours > 0.5) {
            setTimeout(() => setShowRecoveryNudge(true), 1500);
         }
       }
@@ -241,10 +256,6 @@ export default function App() {
       setWishlist([]);
     }
   }, [user?.id]);
-
-  useEffect(() => {
-    localStorage.setItem('aki_orders', JSON.stringify(orders));
-  }, [orders]);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -295,7 +306,6 @@ export default function App() {
   const onOrderComplete = (pointsEarned: number, pointsSpent: number, orderDetails: any) => {
     if (!user) return;
     
-    // Criar objeto de pedido
     const newOrder: Order = {
       id: `ORD-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
       userId: user.id,
@@ -307,19 +317,32 @@ export default function App() {
       paymentMethod: orderDetails.paymentMethod
     };
 
-    setOrders(prev => [newOrder, ...prev]);
+    // CRÍTICO: Lê o estado atual do LocalStorage antes de escrever para evitar sobrescrever dados de outras abas
+    const currentOrders = JSON.parse(localStorage.getItem('aki_orders') || '[]');
+    const updatedOrders = [newOrder, ...currentOrders];
+    
+    // Salva imediatamente
+    localStorage.setItem('aki_orders', JSON.stringify(updatedOrders));
+    
+    // Atualiza estado local
+    setOrders(updatedOrders);
 
     updateDB({ 
       points: user.points - pointsSpent + pointsEarned, 
       lifetimePoints: user.lifetimePoints + pointsEarned, 
       persistedCart: [],
-      lastCartUpdate: undefined // Limpa status de abandono
+      lastCartUpdate: undefined
     }, `Finalizou o pedido ${newOrder.id} e ganhou ${pointsEarned} pontos`, 'order');
     setCart([]);
   };
 
   const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    // Mesma lógica segura: Ler -> Modificar -> Salvar
+    const currentOrders = JSON.parse(localStorage.getItem('aki_orders') || '[]');
+    const updatedOrders = currentOrders.map((o: Order) => o.id === orderId ? { ...o, status: newStatus } : o);
+    
+    localStorage.setItem('aki_orders', JSON.stringify(updatedOrders));
+    setOrders(updatedOrders);
   };
 
   return (

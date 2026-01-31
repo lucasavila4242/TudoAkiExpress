@@ -27,26 +27,30 @@ import { Link, Navigate } from 'react-router-dom';
 
 const AdminDashboard = ({ 
   currentUser, 
-  orders: propOrders = [], // Renomeado para diferenciar do estado local
+  orders: propOrders = [], 
   updateOrderStatus 
 }: { 
   currentUser: User | null, 
   orders: Order[],
   updateOrderStatus: (id: string, s: OrderStatus) => void
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'abandoned' | 'orders'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'abandoned' | 'orders'>('orders'); // Padrão: Pedidos para facilitar o fluxo
   const [localOrders, setLocalOrders] = useState<Order[]>(propOrders);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sincroniza com as props iniciais, mas permite atualização manual
+  // POLLING AUTOMÁTICO: Verifica o "Banco de Dados" a cada 2.5 segundos
   useEffect(() => {
-    fetchOrdersFromDB();
-  }, [propOrders]);
+    fetchOrdersFromDB(); // Carrega inicial
+    const interval = setInterval(() => {
+      fetchOrdersFromDB(true); // Carrega em background
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
 
   // Função para ler diretamente do "Banco de Dados" (LocalStorage)
-  const fetchOrdersFromDB = () => {
-    setIsRefreshing(true);
+  const fetchOrdersFromDB = (silent = false) => {
+    if (!silent) setIsRefreshing(true);
     try {
       const savedOrders = localStorage.getItem('aki_orders');
       if (savedOrders) {
@@ -60,7 +64,7 @@ const AdminDashboard = ({
     } catch (error) {
       console.error("Erro ao sincronizar pedidos:", error);
     } finally {
-      setTimeout(() => setIsRefreshing(false), 500); // Feedback visual rápido
+      if (!silent) setTimeout(() => setIsRefreshing(false), 500); 
     }
   };
 
@@ -71,7 +75,7 @@ const AdminDashboard = ({
   const allUsers: User[] = useMemo(() => {
     const users = JSON.parse(localStorage.getItem('aki_users') || '[]');
     return users.filter((u: any) => u.email !== 'lucasaviladark@gmail.com');
-  }, [isRefreshing]); // Recarrega usuários também ao atualizar
+  }, [isRefreshing]); 
 
   const abandonedCarts = useMemo(() => {
     return allUsers.filter(u => u.persistedCart && u.persistedCart.length > 0);
@@ -83,11 +87,6 @@ const AdminDashboard = ({
       order.id.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [localOrders, searchQuery]);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert('Copiado para a área de transferência!');
-  };
 
   const getAbandonedTime = (timestamp?: string) => {
     if (!timestamp) return 'Tempo desconhecido';
@@ -121,7 +120,7 @@ Dúvidas? Estamos aqui para ajudar!`;
       case 'pending': 
         return { 
           next: 'processing' as OrderStatus, 
-          label: 'Aprovar & Separar', 
+          label: 'INICIAR SEPARAÇÃO', 
           icon: Package,
           color: 'bg-emerald-600 hover:bg-emerald-700',
           desc: 'Liberar para Estoque'
@@ -129,15 +128,15 @@ Dúvidas? Estamos aqui para ajudar!`;
       case 'processing': 
         return { 
           next: 'shipped' as OrderStatus, 
-          label: 'Despachar Entrega', 
+          label: 'DESPACHAR MOTOBOY', 
           icon: Truck,
           color: 'bg-amber-500 hover:bg-amber-600',
-          desc: 'Enviar Motoboy'
+          desc: 'Enviar para Rota'
         };
       case 'shipped': 
         return { 
           next: 'delivered' as OrderStatus, 
-          label: 'Confirmar Entrega', 
+          label: 'CONFIRMAR ENTREGA', 
           icon: CheckCircle2,
           color: 'bg-blue-600 hover:bg-blue-700',
           desc: 'Finalizar Pedido'
@@ -148,8 +147,8 @@ Dúvidas? Estamos aqui para ajudar!`;
 
   const handleUpdateStatus = (id: string, nextStatus: OrderStatus) => {
     updateOrderStatus(id, nextStatus);
-    // Pequeno delay para permitir que o React propague a mudança e salvamento no LocalStorage
-    setTimeout(() => fetchOrdersFromDB(), 100); 
+    // Força atualização imediata
+    setTimeout(() => fetchOrdersFromDB(), 50); 
   };
 
   return (
@@ -163,15 +162,18 @@ Dúvidas? Estamos aqui para ajudar!`;
             </Link>
             <div className="flex items-center gap-4">
               <h1 className="text-4xl font-black text-blue-900 tracking-tighter">Gestão de Vendas Cascavel</h1>
-              <button 
-                onClick={fetchOrdersFromDB} 
-                className={`p-2 rounded-full bg-white border border-gray-200 text-blue-900 shadow-sm hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`}
-                title="Sincronizar Banco de Dados"
-              >
-                <RefreshCcw size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                 <button 
+                  onClick={() => fetchOrdersFromDB()} 
+                  className={`p-2 rounded-full bg-white border border-gray-200 text-blue-900 shadow-sm hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`}
+                  title="Sincronizar Banco de Dados"
+                >
+                  <RefreshCcw size={20} />
+                </button>
+                <span className="text-[10px] font-bold text-gray-400 uppercase animate-pulse">Auto-Sincronizando...</span>
+              </div>
             </div>
-            <p className="text-gray-500 font-medium">Controle total de clientes, leads e logística.</p>
+            <p className="text-gray-500 font-medium">Banco de Dados em Tempo Real (Simulado)</p>
           </div>
         </div>
 
@@ -201,6 +203,12 @@ Dúvidas? Estamos aqui para ajudar!`;
         {/* Tabs */}
         <div className="flex flex-wrap gap-2 bg-gray-200/50 p-1.5 rounded-2xl w-fit">
           <button 
+            onClick={() => setActiveTab('orders')}
+            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-blue-900 text-white shadow-lg' : 'text-gray-500 hover:text-blue-900'}`}
+          >
+            Controle Logístico {localOrders.filter(o => o.status !== 'delivered').length > 0 && <span className="bg-white text-blue-900 px-2 py-0.5 rounded-md text-[9px]">{localOrders.filter(o => o.status !== 'delivered').length}</span>}
+          </button>
+          <button 
             onClick={() => setActiveTab('users')}
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'users' ? 'bg-white text-blue-900 shadow-sm' : 'text-gray-500 hover:text-blue-900'}`}
           >
@@ -211,12 +219,6 @@ Dúvidas? Estamos aqui para ajudar!`;
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'abandoned' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-500 hover:text-red-500'}`}
           >
             Carrinhos Abandonados
-          </button>
-          <button 
-            onClick={() => setActiveTab('orders')}
-            className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-blue-900 text-white shadow-lg' : 'text-gray-500 hover:text-blue-900'}`}
-          >
-            Controle Logístico {localOrders.filter(o => o.status !== 'delivered').length > 0 && <span className="bg-white text-blue-900 px-2 py-0.5 rounded-md text-[9px]">{localOrders.filter(o => o.status !== 'delivered').length}</span>}
           </button>
         </div>
 
@@ -301,10 +303,10 @@ Dúvidas? Estamos aqui para ajudar!`;
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      <th className="px-8 py-5">ID / Data</th>
-                      <th className="px-8 py-5">Detalhes do Pedido</th>
+                      <th className="px-8 py-5">Protocolo / Data</th>
+                      <th className="px-8 py-5">Lista de Separação (Produtos)</th>
                       <th className="px-8 py-5">Status Atual</th>
-                      <th className="px-8 py-5 text-center">Ação do Proprietário</th>
+                      <th className="px-8 py-5 text-center">Ação Logística</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -313,51 +315,58 @@ Dúvidas? Estamos aqui para ajudar!`;
                       
                       return (
                         <tr key={order.id} className="hover:bg-blue-50/30 transition-colors">
-                          <td className="px-8 py-6 align-top">
+                          <td className="px-8 py-6 align-top w-48">
                             <div className="flex flex-col">
-                              <span className="text-sm font-black text-blue-900">{order.id}</span>
+                              <span className="text-sm font-black text-blue-900 bg-blue-100 px-2 py-1 rounded-md w-fit mb-1">{order.id}</span>
                               <span className="text-[10px] text-gray-400 font-bold">{new Date(order.timestamp).toLocaleString()}</span>
                               <div className="mt-2 text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-1 rounded-md w-fit">
-                                {order.paymentMethod.toUpperCase()}
+                                PGTO: {order.paymentMethod.toUpperCase()}
+                              </div>
+                               <div className="mt-2 flex items-start gap-1">
+                                <MapPin size={12} className="text-red-500 mt-0.5 shrink-0" />
+                                <span className="text-[10px] font-bold text-gray-600 leading-tight w-32">{order.address}</span>
                               </div>
                             </div>
                           </td>
                           <td className="px-8 py-6 align-top">
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-start gap-2">
-                                <MapPin size={14} className="text-red-500 mt-0.5 shrink-0" />
-                                <span className="text-xs font-bold text-gray-700 w-48">{order.address}</span>
-                              </div>
-                              <div className="space-y-1 mt-1">
+                            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                               <h5 className="text-[10px] font-black uppercase text-gray-400 mb-2">Itens para Separar:</h5>
+                               <div className="space-y-2">
                                 {order.items.map((item, idx) => (
-                                  <div key={idx} className="text-[10px] text-gray-500 flex justify-between w-48 border-b border-gray-100 pb-1">
-                                    <span>{item.quantity}x {item.name.substring(0, 20)}...</span>
-                                    <span className="font-bold">R$ {(item.price * item.quantity).toFixed(0)}</span>
+                                  <div key={idx} className="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
+                                    <div className="relative">
+                                        <img src={item.image} className="w-10 h-10 rounded-lg object-cover" />
+                                        <span className="absolute -top-2 -right-2 bg-blue-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black">{item.quantity}x</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-blue-900 line-clamp-1">{item.name}</span>
+                                        <span className="text-[10px] text-gray-400">R$ {item.price.toFixed(2)} un.</span>
+                                    </div>
                                   </div>
                                 ))}
-                                <div className="flex justify-between w-48 pt-1">
-                                  <span className="text-[10px] font-black uppercase text-blue-900">Total</span>
-                                  <span className="text-xs font-black text-red-500">R$ {order.total.toFixed(2)}</span>
-                                </div>
+                              </div>
+                              <div className="mt-3 pt-2 border-t border-gray-200 flex justify-between items-center">
+                                <span className="text-[10px] font-black uppercase text-blue-900">Total Pedido</span>
+                                <span className="text-sm font-black text-red-500">R$ {order.total.toFixed(2)}</span>
                               </div>
                             </div>
                           </td>
                           <td className="px-8 py-6 align-top">
                              <div className="flex flex-col gap-2">
-                              <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tighter w-fit flex items-center gap-2 ${
+                              <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter w-fit flex items-center gap-2 ${
                                 order.status === 'delivered' ? 'bg-green-100 text-green-700' :
                                 order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                                order.status === 'processing' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'
+                                order.status === 'processing' ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600'
                               }`}>
-                                {order.status === 'pending' ? <Clock size={12}/> : 
-                                 order.status === 'processing' ? <Package size={12}/> : 
-                                 order.status === 'shipped' ? <Truck size={12}/> : <CheckCircle2 size={12}/>}
+                                {order.status === 'pending' ? <Clock size={14}/> : 
+                                 order.status === 'processing' ? <Package size={14}/> : 
+                                 order.status === 'shipped' ? <Truck size={14}/> : <CheckCircle2 size={14}/>}
                                 
-                                {order.status === 'pending' ? 'Pendente' : 
-                                 order.status === 'processing' ? 'Em Separação' : 
-                                 order.status === 'shipped' ? 'Em Rota' : 'Entregue'}
+                                {order.status === 'pending' ? 'AGUARDANDO' : 
+                                 order.status === 'processing' ? 'EM SEPARAÇÃO' : 
+                                 order.status === 'shipped' ? 'EM ROTA' : 'ENTREGUE'}
                               </span>
-                              {order.status === 'pending' && <span className="text-[9px] text-red-400 font-bold">Aguardando Pagamento ou Confirmação</span>}
+                              {order.status === 'pending' && <span className="text-[9px] text-red-500 font-bold animate-pulse">Ação necessária: Aprovar</span>}
                             </div>
                           </td>
                           <td className="px-8 py-6 text-center align-top">
@@ -365,16 +374,16 @@ Dúvidas? Estamos aqui para ajudar!`;
                               <div className="flex flex-col items-center gap-2">
                                 <button 
                                   onClick={() => handleUpdateStatus(order.id, action.next)}
-                                  className={`${action.color} text-white px-5 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center gap-2 w-full justify-center active:scale-95`}
+                                  className={`${action.color} text-white px-6 py-4 rounded-2xl text-[10px] font-black uppercase shadow-xl transition-all flex items-center gap-2 w-full justify-center active:scale-95 hover:brightness-110`}
                                 >
-                                  <action.icon size={14} className="fill-white/20" /> {action.label}
+                                  <action.icon size={16} className="fill-white/20" /> {action.label}
                                 </button>
                                 <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{action.desc}</span>
                               </div>
                             ) : (
-                              <div className="bg-green-50 p-3 rounded-xl border border-green-100">
+                              <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
                                 <span className="text-green-600 font-black text-[10px] uppercase flex items-center justify-center gap-2">
-                                  <CheckCircle2 size={16} /> Ciclo Finalizado
+                                  <CheckCircle2 size={20} /> Entregue com Sucesso
                                 </span>
                               </div>
                             )}
