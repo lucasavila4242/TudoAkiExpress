@@ -13,7 +13,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",
     "lucide-react": "^0.460.0",
-    "@mercadopago/sdk-react": "^0.0.19"
+    "@mercadopago/sdk-react": "^0.0.19",
+    "firebase": "^10.8.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

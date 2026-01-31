@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
+import { db } from './firebase'; // Importa o Firebase
+import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 
 // Pages
 import Home from './pages/Home';
@@ -207,24 +209,23 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Carrega pedidos iniciais
+  // --- FIREBASE REALTIME LISTENER ---
+  // Isso substitui a leitura do LocalStorage. 
+  // O aplicativo agora "escuta" o banco de dados na nuvem.
   useEffect(() => {
-    syncOrders();
-    // Escuta mudanças no LocalStorage (para sincronizar abas)
-    window.addEventListener('storage', syncOrders);
-    return () => window.removeEventListener('storage', syncOrders);
-  }, []);
+    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const liveOrders: Order[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        liveOrders.push({ id: doc.id, ...data } as Order);
+      });
+      setOrders(liveOrders);
+    });
 
-  const syncOrders = () => {
-    try {
-      const saved = localStorage.getItem('aki_orders');
-      if (saved) {
-        setOrders(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error("Erro ao sincronizar pedidos", e);
-    }
-  };
+    return () => unsubscribe();
+  }, []);
 
   const updateDB = useCallback((updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
@@ -313,11 +314,11 @@ export default function App() {
     setUser(null);
   };
 
-  const onOrderComplete = (pointsEarned: number, pointsSpent: number, orderDetails: any) => {
+  const onOrderComplete = async (pointsEarned: number, pointsSpent: number, orderDetails: any) => {
     if (!user) return;
     
-    const newOrder: Order = {
-      id: `ORD-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+    // Preparando objeto do pedido
+    const newOrderData = {
       userId: user.id,
       items: [...cart],
       total: orderDetails.total,
@@ -327,32 +328,37 @@ export default function App() {
       paymentMethod: orderDetails.paymentMethod
     };
 
-    // CRÍTICO: Lê o estado atual do LocalStorage antes de escrever para evitar sobrescrever dados de outras abas
-    const currentOrders = JSON.parse(localStorage.getItem('aki_orders') || '[]');
-    const updatedOrders = [newOrder, ...currentOrders];
-    
-    // Salva imediatamente
-    localStorage.setItem('aki_orders', JSON.stringify(updatedOrders));
-    
-    // Atualiza estado local
-    setOrders(updatedOrders);
+    // --- FIREBASE WRITE ---
+    // Salva na nuvem. O `useEffect` lá em cima vai pegar essa mudança automaticamente.
+    try {
+      await addDoc(collection(db, "orders"), newOrderData);
+    } catch (e) {
+      console.error("Erro ao salvar pedido no Firebase", e);
+      // Fallback para LocalStorage se der erro na rede (opcional)
+      const currentOrders = JSON.parse(localStorage.getItem('aki_orders') || '[]');
+      const fallbackOrder = { id: `OFFLINE-${Date.now()}`, ...newOrderData };
+      localStorage.setItem('aki_orders', JSON.stringify([fallbackOrder, ...currentOrders]));
+    }
 
     updateDB({ 
       points: user.points - pointsSpent + pointsEarned, 
       lifetimePoints: user.lifetimePoints + pointsEarned, 
       persistedCart: [],
       lastCartUpdate: undefined
-    }, `Finalizou o pedido ${newOrder.id} e ganhou ${pointsEarned} pontos`, 'order');
+    }, `Finalizou um pedido e ganhou ${pointsEarned} pontos`, 'order');
     setCart([]);
   };
 
-  const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    // Mesma lógica segura: Ler -> Modificar -> Salvar
-    const currentOrders = JSON.parse(localStorage.getItem('aki_orders') || '[]');
-    const updatedOrders = currentOrders.map((o: Order) => o.id === orderId ? { ...o, status: newStatus } : o);
-    
-    localStorage.setItem('aki_orders', JSON.stringify(updatedOrders));
-    setOrders(updatedOrders);
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    // --- FIREBASE UPDATE ---
+    try {
+      const orderRef = doc(db, "orders", orderId);
+      await updateDoc(orderRef, {
+        status: newStatus
+      });
+    } catch (e) {
+      console.error("Erro ao atualizar status", e);
+    }
   };
 
   return (

@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   User as UserIcon, 
   ShoppingBag, 
@@ -21,9 +21,9 @@ import { Link, Navigate } from 'react-router-dom';
 
 const AdminDashboard = ({ 
   currentUser, 
-  orders: propOrders = [], 
+  orders, // Agora recebemos orders diretamente do Firebase via App.tsx
   updateOrderStatus,
-  isLogisticsMode = false // Novo modo para acesso operacional
+  isLogisticsMode = false 
 }: { 
   currentUser: User | null, 
   orders: Order[],
@@ -31,51 +31,14 @@ const AdminDashboard = ({
   isLogisticsMode?: boolean
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'abandoned' | 'orders'>('orders');
-  const [localOrders, setLocalOrders] = useState<Order[]>(propOrders);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // POLLING AGRESSIVO PARA MODO LOGÍSTICO (1s)
-  useEffect(() => {
-    fetchOrdersFromDB(); 
-    const intervalTime = isLogisticsMode ? 1000 : 3000; 
-    const interval = setInterval(() => {
-      fetchOrdersFromDB(true); 
-    }, intervalTime);
-    return () => clearInterval(interval);
-  }, [isLogisticsMode]);
-
-  const fetchOrdersFromDB = (silent = false) => {
-    if (!silent) setIsRefreshing(true);
-    try {
-      const savedOrders = localStorage.getItem('aki_orders');
-      if (savedOrders) {
-        const parsed = JSON.parse(savedOrders);
-        if (Array.isArray(parsed)) {
-          // Ordena por timestamp de forma segura
-          parsed.sort((a: any, b: any) => {
-            const timeA = new Date(a.timestamp || 0).getTime();
-            const timeB = new Date(b.timestamp || 0).getTime();
-            return timeB - timeA;
-          });
-          setLocalOrders(parsed);
-        }
-      } else {
-        setLocalOrders([]);
-      }
-    } catch (error) {
-      console.error("Erro ao sincronizar pedidos:", error);
-    } finally {
-      if (!silent) setTimeout(() => setIsRefreshing(false), 300); 
-    }
-  };
 
   // SEGURANÇA: Exige login e permissão de admin para qualquer modo
   if (!currentUser || !currentUser.isAdmin) {
     return <Navigate to="/" />;
   }
 
-  // Parsing seguro de usuários
+  // Parsing seguro de usuários (Ainda local, pode ser migrado depois)
   const allUsers: User[] = useMemo(() => {
     try {
       const usersStr = localStorage.getItem('aki_users');
@@ -87,18 +50,18 @@ const AdminDashboard = ({
       console.error("Erro ao ler usuários", e);
       return [];
     }
-  }, [isRefreshing]); 
+  }, []); 
 
   const abandonedCarts = useMemo(() => {
     return allUsers.filter(u => u.persistedCart && u.persistedCart.length > 0);
   }, [allUsers]);
 
   const filteredOrders = useMemo(() => {
-    if (!searchQuery) return localOrders;
-    return localOrders.filter(order => 
+    if (!searchQuery) return orders;
+    return orders.filter(order => 
       (order.id || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [localOrders, searchQuery]);
+  }, [orders, searchQuery]);
 
   const getAbandonedTime = (timestamp?: string) => {
     if (!timestamp) return 'Tempo desconhecido';
@@ -162,7 +125,6 @@ Dúvidas? Estamos aqui para ajudar!`;
 
   const handleUpdateStatus = (id: string, nextStatus: OrderStatus) => {
     updateOrderStatus(id, nextStatus);
-    setTimeout(() => fetchOrdersFromDB(), 50); 
   };
 
   // Wrapper Style
@@ -187,17 +149,10 @@ Dúvidas? Estamos aqui para ajudar!`;
                 {isLogisticsMode ? 'Terminal Logístico' : 'Gestão de Vendas Cascavel'}
               </h1>
               <div className="flex items-center gap-2">
-                 <button 
-                  onClick={() => fetchOrdersFromDB()} 
-                  className={`p-2 rounded-full border border-gray-200 shadow-sm transition-all ${isRefreshing ? 'animate-spin' : ''} ${isLogisticsMode ? 'bg-slate-700 text-white border-slate-600 hover:bg-slate-600' : 'bg-white text-blue-900 hover:bg-blue-50'}`}
-                  title="Sincronizar Banco de Dados"
-                >
-                  <RefreshCcw size={20} />
-                </button>
                 <div className="flex flex-col">
-                    <span className={`text-[10px] font-bold uppercase ${isLogisticsMode ? 'text-emerald-400' : 'text-gray-400'} animate-pulse flex items-center gap-1`}>
+                    <span className={`text-[10px] font-bold uppercase ${isLogisticsMode ? 'text-emerald-400' : 'text-green-500'} animate-pulse flex items-center gap-1`}>
                          <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                         DB Online
+                         Conexão Firebase Ativa
                     </span>
                 </div>
               </div>
@@ -224,12 +179,12 @@ Dúvidas? Estamos aqui para ajudar!`;
             <div className="bg-red-600 p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
                 <div className="absolute -right-4 -bottom-4 opacity-10"><Truck size={120} /></div>
                 <p className="text-red-100 text-xs font-black uppercase mb-2">Pedidos Totais</p>
-                <h2 className="text-5xl font-black">{localOrders.length}</h2>
+                <h2 className="text-5xl font-black">{orders.length}</h2>
             </div>
             <div className="bg-emerald-600 p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
                 <div className="absolute -right-4 -bottom-4 opacity-10"><Banknote size={120} /></div>
                 <p className="text-emerald-100 text-xs font-black uppercase mb-2">Receita Total</p>
-                <h2 className="text-5xl font-black">R$ {localOrders.reduce((acc, o) => acc + (o.total || 0), 0).toFixed(0)}</h2>
+                <h2 className="text-5xl font-black">R$ {orders.reduce((acc, o) => acc + (o.total || 0), 0).toFixed(0)}</h2>
             </div>
             </div>
         )}
@@ -240,7 +195,7 @@ Dúvidas? Estamos aqui para ajudar!`;
             onClick={() => setActiveTab('orders')}
             className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? (isLogisticsMode ? 'bg-emerald-500 text-white shadow-lg' : 'bg-blue-900 text-white shadow-lg') : (isLogisticsMode ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-blue-900')}`}
           >
-            Terminal de Pedidos {localOrders.filter(o => o.status !== 'delivered').length > 0 && <span className={`px-2 py-0.5 rounded-md text-[9px] ${isLogisticsMode ? 'bg-white text-emerald-900' : 'bg-white text-blue-900'}`}>{localOrders.filter(o => o.status !== 'delivered').length}</span>}
+            Terminal de Pedidos {orders.filter(o => o.status !== 'delivered').length > 0 && <span className={`px-2 py-0.5 rounded-md text-[9px] ${isLogisticsMode ? 'bg-white text-emerald-900' : 'bg-white text-blue-900'}`}>{orders.filter(o => o.status !== 'delivered').length}</span>}
           </button>
           
           {!isLogisticsMode && (

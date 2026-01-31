@@ -113,7 +113,7 @@ const PaymentSuccessModal = ({ isOpen, onClose, lastOrder }: { isOpen: boolean, 
 const Account = ({ 
   user, 
   wishlist, 
-  orders: propOrders = [], 
+  orders, // Agora recebemos orders diretamente do Firebase via App.tsx
   toggleWishlist, 
   addToCart,
   onOpenAuth,
@@ -130,41 +130,26 @@ const Account = ({
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>('profile');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-  const [liveOrders, setLiveOrders] = useState<Order[]>(propOrders);
   
   const prevOrdersRef = useRef<Order[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Polling para sincronizar abas do mesmo navegador
+  // Detecta mudança de status (Pending -> Processing) para exibir modal de sucesso
+  // Isso acontece automaticamente pois 'orders' vem do Firebase e muda em tempo real
   useEffect(() => {
-    if (!user) return;
-    setLiveOrders(propOrders);
-    const interval = setInterval(() => {
-      try {
-        const saved = localStorage.getItem('aki_orders');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const myOrders = parsed.filter((o: Order) => o.userId === user.id);
-          
-          // Verifica mudanças de status
-          if (prevOrdersRef.current.length > 0) {
-             myOrders.forEach((curr: Order) => {
-               const prev = prevOrdersRef.current.find(p => p.id === curr.id);
-               if (prev && prev.status === 'pending' && curr.status === 'processing') {
-                 setShowSuccessModal(true);
-                 setActiveTab('orders');
-                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-               }
-             });
-          }
-          setLiveOrders(myOrders);
-          prevOrdersRef.current = myOrders;
+    if (orders.length > 0 && prevOrdersRef.current.length > 0) {
+      orders.forEach(curr => {
+        const prev = prevOrdersRef.current.find(p => p.id === curr.id);
+        if (prev && prev.status === 'pending' && curr.status === 'processing') {
+          setShowSuccessModal(true);
+          setActiveTab('orders');
+          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         }
-      } catch (e) { console.error(e); }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [user, propOrders]);
+      });
+    }
+    prevOrdersRef.current = orders;
+  }, [orders]);
 
   // Handler de retorno do Mercado Pago
   useEffect(() => {
@@ -177,10 +162,10 @@ const Account = ({
     const status = getParam('collection_status');
     const paymentId = getParam('payment_id');
 
-    if (status === 'approved' && paymentId && liveOrders.length > 0) {
+    if (status === 'approved' && paymentId && orders.length > 0) {
       setIsVerifyingPayment(true);
 
-      const pendingOrders = liveOrders
+      const pendingOrders = orders
         .filter(o => o.status === 'pending')
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -189,10 +174,10 @@ const Account = ({
         const latestOrder = pendingOrders[0];
         
         setTimeout(() => {
-          // Atualiza status localmente
-          updateOrderStatus(latestOrder.id, 'processing'); // Optimistic update
+          // Atualiza status no Firebase
+          updateOrderStatus(latestOrder.id, 'processing');
           setIsVerifyingPayment(false);
-          setShowSuccessModal(true); // Abre o modal com botão do Whats
+          setShowSuccessModal(true);
           setActiveTab('orders');
           navigate('/account', { replace: true });
         }, 1500);
@@ -200,7 +185,7 @@ const Account = ({
         setIsVerifyingPayment(false);
       }
     }
-  }, [location, liveOrders, updateOrderStatus, navigate]);
+  }, [location, orders, updateOrderStatus, navigate]);
 
   const tiers = {
     'Bronze': { color: 'text-amber-600', bg: 'bg-amber-100', next: 500 },
@@ -213,7 +198,7 @@ const Account = ({
   [wishlist]);
 
   // Pega o último pedido para o modal de WhatsApp
-  const lastOrderForModal = liveOrders.length > 0 ? liveOrders[0] : undefined;
+  const lastOrderForModal = orders.length > 0 ? orders[0] : undefined;
 
   if (!user) {
     return (
@@ -267,7 +252,7 @@ const Account = ({
             onClick={() => setActiveTab('orders')}
             className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-white text-blue-900 shadow-sm' : 'text-gray-500 hover:text-blue-900'}`}
           >
-            Meus Pedidos {liveOrders.length > 0 && <span className="bg-red-500 text-white px-2 py-0.5 rounded-md text-[9px]">{liveOrders.length}</span>}
+            Meus Pedidos {orders.length > 0 && <span className="bg-red-500 text-white px-2 py-0.5 rounded-md text-[9px]">{orders.length}</span>}
           </button>
         </div>
 
@@ -395,7 +380,7 @@ const Account = ({
               <Package className="text-red-500" /> Acompanhe sua Entrega Express
             </h3>
             
-            {liveOrders.length === 0 ? (
+            {orders.length === 0 ? (
               <div className="bg-white p-24 text-center rounded-[3rem] border border-gray-100 space-y-4">
                 <ShoppingBag size={64} className="mx-auto text-gray-200" />
                 <h4 className="text-xl font-black text-blue-900">Nenhum pedido realizado</h4>
@@ -404,7 +389,7 @@ const Account = ({
               </div>
             ) : (
               <div className="space-y-6">
-                {liveOrders.map(order => (
+                {orders.map(order => (
                   <div key={order.id} className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-8 border-b border-gray-50 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
