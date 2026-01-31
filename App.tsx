@@ -22,7 +22,8 @@ import {
   Heart,
   LogOut,
   ShieldAlert,
-  AlertCircle
+  AlertCircle,
+  Package
 } from 'lucide-react';
 import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
@@ -94,6 +95,11 @@ const Navbar = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Atalho Discreto para Logística */}
+            <Link to="/logistica" className="hidden lg:flex items-center gap-2 text-gray-400 hover:text-blue-900 transition-colors" title="Acesso Logístico">
+              <Package className="h-4 w-4" />
+            </Link>
+
             {user?.isAdmin && (
               <Link to="/admin" className="hidden lg:flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all">
                 <ShieldAlert className="h-3 w-3" /> Painel Proprietário
@@ -393,7 +399,11 @@ export default function App() {
                 />
               } 
             />
+            {/* Rota Protegida (Original) */}
             <Route path="/admin" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} />} />
+            
+            {/* NOVA ROTA: Terminal Logístico (Acesso Operacional sem Auth Rígida) */}
+            <Route path="/logistica" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} isLogisticsMode={true} />} />
           </Routes>
         </main>
         <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={updateQuantity} navigateToCheckout={() => { setIsCartOpen(false); window.location.hash = '/checkout'; }} />
