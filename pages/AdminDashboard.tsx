@@ -70,8 +70,8 @@ const AdminDashboard = ({
     }
   };
 
-  // Se NÃO for modo logístico E o usuário não for admin, redireciona
-  if (!isLogisticsMode && (!currentUser || !currentUser.isAdmin)) {
+  // SEGURANÇA: Exige login e permissão de admin para qualquer modo
+  if (!currentUser || !currentUser.isAdmin) {
     return <Navigate to="/" />;
   }
 

@@ -95,15 +95,16 @@ const Navbar = ({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Atalho para Logística (Visível Mobile) */}
-            <Link to="/logistica" className="flex items-center gap-2 p-2 text-gray-400 hover:text-blue-900 transition-colors" title="Terminal Logístico">
-              <Package className="h-5 w-5" />
-            </Link>
-
+            {/* Área Administrativa - Visível APENAS para Admin */}
             {user?.isAdmin && (
-              <Link to="/admin" className="hidden lg:flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all">
-                <ShieldAlert className="h-3 w-3" /> Painel Proprietário
-              </Link>
+              <div className="flex items-center gap-2 border-r border-gray-200 pr-4 mr-2">
+                 <Link to="/logistica" className="flex items-center gap-2 p-2 text-gray-400 hover:text-blue-900 transition-colors" title="Terminal Logístico">
+                  <Package className="h-5 w-5" />
+                </Link>
+                <Link to="/admin" className="hidden lg:flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-700 transition-all">
+                  <ShieldAlert className="h-3 w-3" /> Proprietário
+                </Link>
+              </div>
             )}
 
             {user ? (
@@ -402,7 +403,7 @@ export default function App() {
             {/* Rota Protegida (Original) */}
             <Route path="/admin" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} />} />
             
-            {/* NOVA ROTA: Terminal Logístico (Acesso Operacional sem Auth Rígida) */}
+            {/* NOVA ROTA: Terminal Logístico (Agora requer ser Admin também) */}
             <Route path="/logistica" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} isLogisticsMode={true} />} />
           </Routes>
         </main>

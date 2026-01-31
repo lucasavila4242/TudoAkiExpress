@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { 
   Award, 
   ShoppingBag, 
@@ -122,13 +122,29 @@ const Account = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   
+  // Referência para armazenar o estado anterior dos pedidos e detectar mudanças
+  const prevOrdersRef = useRef<Order[]>([]);
+
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Verifica retorno do Mercado Pago de forma robusta
+  // Detecta mudança de status de 'pending' para 'processing' (Aprovação Manual do Admin)
   useEffect(() => {
-    // Helper para buscar parâmetros tanto da URL normal quanto do HashRouter
-    // Mercado Pago às vezes coloca os parametros antes ou depois do #
+    if (prevOrdersRef.current.length > 0) {
+      orders.forEach(currentOrder => {
+        const prevOrder = prevOrdersRef.current.find(p => p.id === currentOrder.id);
+        // Se o pedido existia antes como 'pending' e agora é 'processing', dispara o modal
+        if (prevOrder && prevOrder.status === 'pending' && currentOrder.status === 'processing') {
+          setShowSuccessModal(true);
+          setActiveTab('orders');
+        }
+      });
+    }
+    prevOrdersRef.current = orders;
+  }, [orders]);
+
+  // Verifica retorno do Mercado Pago de forma robusta (Redirecionamento Automático)
+  useEffect(() => {
     const getParam = (key: string) => {
       const hashParams = new URLSearchParams(location.search);
       const queryParams = new URLSearchParams(window.location.search);
@@ -138,13 +154,9 @@ const Account = ({
     const status = getParam('collection_status');
     const paymentId = getParam('payment_id');
 
-    // Se houver status aprovado na URL, iniciamos a verificação
     if (status === 'approved' && paymentId && orders.length > 0) {
       setIsVerifyingPayment(true);
 
-      // Encontra o pedido pendente mais recente deste usuário
-      // Nota: Em um sistema real com backend, o Webhook faria isso no servidor.
-      // Aqui, confiamos no retorno do navegador.
       const pendingOrders = orders
         .filter(o => o.status === 'pending')
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -152,16 +164,11 @@ const Account = ({
       if (pendingOrders.length > 0) {
         const latestOrder = pendingOrders[0];
         
-        // Simula um pequeno delay de processamento para UX
         setTimeout(() => {
-          // Atualiza para 'processing' (Em Separação)
           updateOrderStatus(latestOrder.id, 'processing');
-          
           setIsVerifyingPayment(false);
           setShowSuccessModal(true);
           setActiveTab('orders');
-          
-          // Limpa a URL para evitar reprocessamento ao recarregar a página
           navigate('/account', { replace: true });
         }, 1500);
       } else {
