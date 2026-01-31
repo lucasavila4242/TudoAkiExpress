@@ -316,8 +316,9 @@ export default function App() {
   const onOrderComplete = (pointsEarned: number, pointsSpent: number, orderDetails: any) => {
     if (!user) return;
     
+    // GERA O ID AQUI SE NÃO FORNECIDO
     const newOrder: Order = {
-      id: `ORD-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+      id: orderDetails.id || `ORD-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
       userId: user.id,
       items: [...cart],
       total: orderDetails.total,
@@ -327,7 +328,7 @@ export default function App() {
       paymentMethod: orderDetails.paymentMethod
     };
 
-    // CRÍTICO: Lê o estado atual do LocalStorage antes de escrever para evitar sobrescrever dados de outras abas
+    // CRÍTICO: Lê o estado atual do LocalStorage antes de escrever
     const currentOrders = JSON.parse(localStorage.getItem('aki_orders') || '[]');
     const updatedOrders = [newOrder, ...currentOrders];
     
@@ -336,6 +337,9 @@ export default function App() {
     
     // Atualiza estado local
     setOrders(updatedOrders);
+
+    // DISPARE O EVENTO PARA OUTRAS ABAS/COMPONENTES
+    window.dispatchEvent(new Event('storage'));
 
     updateDB({ 
       points: user.points - pointsSpent + pointsEarned, 

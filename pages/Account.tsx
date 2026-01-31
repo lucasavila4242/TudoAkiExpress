@@ -23,10 +23,11 @@ import {
   CheckCircle2,
   X,
   PartyPopper,
-  Loader2
+  Loader2,
+  MessageCircle
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus } from '../types';
-import { PRODUCTS } from '../constants';
+import { PRODUCTS, STORE_PHONE } from '../constants';
 import ProductCard from '../components/ProductCard';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -72,8 +73,16 @@ const OrderStatusStepper = ({ status }: { status: OrderStatus }) => {
   );
 };
 
-const PaymentSuccessModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+const PaymentSuccessModal = ({ isOpen, onClose, lastOrder }: { isOpen: boolean, onClose: () => void, lastOrder?: Order }) => {
   if (!isOpen) return null;
+
+  const handleNotifyWhatsapp = () => {
+    if (!lastOrder) return;
+    const message = `🔔 *COMPROVANTE DE PAGAMENTO*\n\nOlá, acabei de realizar o pagamento!\n\n🆔 *Pedido:* ${lastOrder.id}\n💰 *Valor:* R$ ${lastOrder.total.toFixed(2)}\n📍 *Endereço:* ${lastOrder.address}\n\nPodem confirmar para liberar a entrega?`;
+    const url = `https://wa.me/${STORE_PHONE}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-blue-900/80 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
@@ -82,19 +91,19 @@ const PaymentSuccessModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
           <PartyPopper className="h-10 w-10 text-green-600 animate-bounce" />
           <div className="absolute inset-0 rounded-full border-4 border-green-50 animate-ping opacity-25" />
         </div>
-        <h2 className="text-2xl font-black text-blue-900 mb-2">Pagamento Confirmado!</h2>
-        <p className="text-gray-500 text-sm mb-6">Recebemos seu pagamento com sucesso. Seu pedido já foi enviado para <strong className="text-blue-900">separação imediata</strong> no estoque.</p>
+        <h2 className="text-2xl font-black text-blue-900 mb-2">Pedido Recebido!</h2>
+        <p className="text-gray-500 text-sm mb-6">Para agilizar sua entrega, envie o comprovante ou avise nossa equipe agora.</p>
         
-        <div className="bg-gray-50 rounded-2xl p-4 mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Clock className="h-5 w-5 text-red-500" />
-            <span className="text-xs font-black uppercase text-gray-400">Previsão</span>
-          </div>
-          <p className="font-bold text-blue-900">Entrega Hoje até as 18h</p>
-        </div>
+        <button 
+          onClick={handleNotifyWhatsapp}
+          className="w-full bg-green-500 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-green-600 transition-all flex items-center justify-center gap-2 mb-3 animate-pulse-subtle"
+        >
+          <MessageCircle size={20} />
+          AVISAR LOJA NO WHATSAPP
+        </button>
 
-        <button onClick={onClose} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-blue-800 transition-all">
-          Acompanhar Pedido
+        <button onClick={onClose} className="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-blue-900">
+          Acompanhar pelo site
         </button>
       </div>
     </div>
@@ -104,7 +113,7 @@ const PaymentSuccessModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
 const Account = ({ 
   user, 
   wishlist, 
-  orders = [],
+  orders: propOrders = [], 
   toggleWishlist, 
   addToCart,
   onOpenAuth,
@@ -121,29 +130,43 @@ const Account = ({
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>('profile');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [liveOrders, setLiveOrders] = useState<Order[]>(propOrders);
   
-  // Referência para armazenar o estado anterior dos pedidos e detectar mudanças
   const prevOrdersRef = useRef<Order[]>([]);
-
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Detecta mudança de status de 'pending' para 'processing' (Aprovação Manual do Admin)
+  // Polling para sincronizar abas do mesmo navegador
   useEffect(() => {
-    if (prevOrdersRef.current.length > 0) {
-      orders.forEach(currentOrder => {
-        const prevOrder = prevOrdersRef.current.find(p => p.id === currentOrder.id);
-        // Se o pedido existia antes como 'pending' e agora é 'processing', dispara o modal
-        if (prevOrder && prevOrder.status === 'pending' && currentOrder.status === 'processing') {
-          setShowSuccessModal(true);
-          setActiveTab('orders');
+    if (!user) return;
+    setLiveOrders(propOrders);
+    const interval = setInterval(() => {
+      try {
+        const saved = localStorage.getItem('aki_orders');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const myOrders = parsed.filter((o: Order) => o.userId === user.id);
+          
+          // Verifica mudanças de status
+          if (prevOrdersRef.current.length > 0) {
+             myOrders.forEach((curr: Order) => {
+               const prev = prevOrdersRef.current.find(p => p.id === curr.id);
+               if (prev && prev.status === 'pending' && curr.status === 'processing') {
+                 setShowSuccessModal(true);
+                 setActiveTab('orders');
+                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+               }
+             });
+          }
+          setLiveOrders(myOrders);
+          prevOrdersRef.current = myOrders;
         }
-      });
-    }
-    prevOrdersRef.current = orders;
-  }, [orders]);
+      } catch (e) { console.error(e); }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [user, propOrders]);
 
-  // Verifica retorno do Mercado Pago de forma robusta (Redirecionamento Automático)
+  // Handler de retorno do Mercado Pago
   useEffect(() => {
     const getParam = (key: string) => {
       const hashParams = new URLSearchParams(location.search);
@@ -154,20 +177,22 @@ const Account = ({
     const status = getParam('collection_status');
     const paymentId = getParam('payment_id');
 
-    if (status === 'approved' && paymentId && orders.length > 0) {
+    if (status === 'approved' && paymentId && liveOrders.length > 0) {
       setIsVerifyingPayment(true);
 
-      const pendingOrders = orders
+      const pendingOrders = liveOrders
         .filter(o => o.status === 'pending')
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+      // Pega o pedido mais recente pendente
       if (pendingOrders.length > 0) {
         const latestOrder = pendingOrders[0];
         
         setTimeout(() => {
-          updateOrderStatus(latestOrder.id, 'processing');
+          // Atualiza status localmente
+          updateOrderStatus(latestOrder.id, 'processing'); // Optimistic update
           setIsVerifyingPayment(false);
-          setShowSuccessModal(true);
+          setShowSuccessModal(true); // Abre o modal com botão do Whats
           setActiveTab('orders');
           navigate('/account', { replace: true });
         }, 1500);
@@ -175,7 +200,7 @@ const Account = ({
         setIsVerifyingPayment(false);
       }
     }
-  }, [location, orders, updateOrderStatus, navigate]);
+  }, [location, liveOrders, updateOrderStatus, navigate]);
 
   const tiers = {
     'Bronze': { color: 'text-amber-600', bg: 'bg-amber-100', next: 500 },
@@ -186,6 +211,9 @@ const Account = ({
   const wishlistedProducts = useMemo(() => 
     PRODUCTS.filter(p => wishlist.includes(p.id)), 
   [wishlist]);
+
+  // Pega o último pedido para o modal de WhatsApp
+  const lastOrderForModal = liveOrders.length > 0 ? liveOrders[0] : undefined;
 
   if (!user) {
     return (
@@ -200,7 +228,6 @@ const Account = ({
     );
   }
 
-  // TELA DE VERIFICAÇÃO DE PAGAMENTO (INTERMEDIÁRIA)
   if (isVerifyingPayment) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -224,7 +251,7 @@ const Account = ({
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20 pt-10 px-4 sm:px-6 lg:px-8">
-      <PaymentSuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+      <PaymentSuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} lastOrder={lastOrderForModal} />
       
       <div className="max-w-5xl mx-auto space-y-8">
         
@@ -240,7 +267,7 @@ const Account = ({
             onClick={() => setActiveTab('orders')}
             className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${activeTab === 'orders' ? 'bg-white text-blue-900 shadow-sm' : 'text-gray-500 hover:text-blue-900'}`}
           >
-            Meus Pedidos {orders.length > 0 && <span className="bg-red-500 text-white px-2 py-0.5 rounded-md text-[9px]">{orders.length}</span>}
+            Meus Pedidos {liveOrders.length > 0 && <span className="bg-red-500 text-white px-2 py-0.5 rounded-md text-[9px]">{liveOrders.length}</span>}
           </button>
         </div>
 
@@ -368,7 +395,7 @@ const Account = ({
               <Package className="text-red-500" /> Acompanhe sua Entrega Express
             </h3>
             
-            {orders.length === 0 ? (
+            {liveOrders.length === 0 ? (
               <div className="bg-white p-24 text-center rounded-[3rem] border border-gray-100 space-y-4">
                 <ShoppingBag size={64} className="mx-auto text-gray-200" />
                 <h4 className="text-xl font-black text-blue-900">Nenhum pedido realizado</h4>
@@ -377,7 +404,7 @@ const Account = ({
               </div>
             ) : (
               <div className="space-y-6">
-                {orders.map(order => (
+                {liveOrders.map(order => (
                   <div key={order.id} className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-8 border-b border-gray-50 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">

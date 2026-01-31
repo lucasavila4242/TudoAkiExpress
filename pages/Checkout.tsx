@@ -242,8 +242,6 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
       }
 
       // CORREÇÃO: SANITIZAÇÃO DO EMAIL DO PAGADOR
-      // O Mercado Pago bloqueia pagamentos onde o email do comprador é igual ao do vendedor.
-      // Se detectarmos que é o admin ou um email genérico, geramos um alias para permitir o teste.
       const isOwner = user.email === 'lucasaviladark@gmail.com';
       const payerEmail = (isOwner || !user.email.includes('@')) 
         ? `cliente.teste.${Date.now()}@gmail.com` 
@@ -257,7 +255,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
         payer: {
           name: data.name.split(' ')[0],
           surname: data.name.split(' ').slice(1).join(' ') || 'Cliente',
-          email: payerEmail, // Usando o email sanitizado
+          email: payerEmail, 
           phone: {
             area_code: cleanPhone.substring(0, 2),
             number: cleanPhone.substring(2)
@@ -300,8 +298,10 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
 
       const result = await response.json();
       
-      // Registrar "pré-pedido" localmente antes de sair
+      // SALVA O PEDIDO LOCALMENTE ANTES DE REDIRECIONAR
+      // Isso garante que se o cliente fechar a aba durante o pagamento, o pedido já exista como "Pendente" no Admin (se estiverem no mesmo dispositivo)
       onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0, {
+        id: result.external_reference, // Opcional, ou deixa gerar no App.tsx
         total: total,
         address: data.address,
         paymentMethod: 'mercadopago'

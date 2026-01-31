@@ -7,6 +7,9 @@ export const COLORS = {
   accent: '#F59E0B', // Amber-500
 };
 
+// ADICIONE SEU NÚMERO AQUI (DDD + NÚMERO, apenas dígitos)
+export const STORE_PHONE = '5545999999999'; 
+
 export interface Testimonial {
   id: number;
   name: string;
