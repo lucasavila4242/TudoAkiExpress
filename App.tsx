@@ -29,7 +29,7 @@ import {
 import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
 import { db } from './firebase'; // Importa o Firebase
-import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion, setDoc } from 'firebase/firestore';
 
 // Pages
 import Home from './pages/Home';
@@ -243,7 +243,7 @@ export default function App() {
     }
   }, []);
 
-  // --- FUNÇÃO CENTRAL DE ATUALIZAÇÃO (AGORA COM FIRESTORE) ---
+  // --- FUNÇÃO CENTRAL DE ATUALIZAÇÃO (AGORA COM FIRESTORE ROBUSTO) ---
   const updateDB = useCallback(async (updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
     
@@ -271,7 +271,9 @@ export default function App() {
         if (newActivity) {
             firebaseUpdates.activityLog = arrayUnion(newActivity);
         }
-        await updateDoc(userRef, firebaseUpdates);
+        // USANDO setDoc com merge AO INVÉS DE updateDoc
+        // Isso garante que se o usuário for antigo (localstorage) e não existir na nuvem, ele será criado.
+        await setDoc(userRef, firebaseUpdates, { merge: true });
     } catch (e) {
         console.error("Erro ao sincronizar usuário no Firebase", e);
     }
