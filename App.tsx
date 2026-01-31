@@ -23,12 +23,13 @@ import {
   LogOut,
   ShieldAlert,
   AlertCircle,
-  Package
+  Package,
+  WifiOff
 } from 'lucide-react';
 import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
 import { db } from './firebase'; // Importa o Firebase
-import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion } from 'firebase/firestore';
 
 // Pages
 import Home from './pages/Home';
@@ -204,49 +205,76 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showRecoveryNudge, setShowRecoveryNudge] = useState(false);
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+  
   const [user, setUser] = useState<UserType | null>(() => {
     const saved = localStorage.getItem('aki_current_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  // --- FIREBASE REALTIME LISTENER ---
-  // Isso substitui a leitura do LocalStorage. 
-  // O aplicativo agora "escuta" o banco de dados na nuvem.
+  // --- FIREBASE REALTIME LISTENER (PEDIDOS) ---
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const liveOrders: Order[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        liveOrders.push({ id: doc.id, ...data } as Order);
+    try {
+      const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const liveOrders: Order[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          liveOrders.push({ id: doc.id, ...data } as Order);
+        });
+        setOrders(liveOrders);
+        setFirebaseError(null);
+      }, (error) => {
+        console.error("Erro Firebase:", error);
+        if (error.code === 'permission-denied') {
+          setFirebaseError("Permissão negada. Verifique se as 'Regras de Segurança' do Firestore estão em modo de teste.");
+        } else if (error.code === 'unavailable') {
+           setFirebaseError("Não foi possível conectar ao Firebase. Verifique sua internet.");
+        } else {
+           setFirebaseError("Erro ao conectar no Banco de Dados. Verifique o console.");
+        }
       });
-      setOrders(liveOrders);
-    });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } catch (e) {
+      console.error("Erro fatal Firebase:", e);
+      setFirebaseError("Erro na configuração do Firebase. Crie o Firestore Database no console.");
+    }
   }, []);
 
-  const updateDB = useCallback((updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
+  // --- FUNÇÃO CENTRAL DE ATUALIZAÇÃO (AGORA COM FIRESTORE) ---
+  const updateDB = useCallback(async (updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
-    const users = JSON.parse(localStorage.getItem('aki_users') || '[]');
-    const userIndex = users.findIndex((u: any) => u.id === user.id);
-    if (userIndex === -1) return;
+    
+    // Atualiza estado local imediatamente para a UI ficar rápida
     const newActivity: UserActivity | null = activity ? {
       id: Math.random().toString(36).substr(2, 9),
       type: activityType,
       action: activity,
       timestamp: new Date().toISOString()
     } : null;
+
     const updatedUser = { 
-      ...users[userIndex], 
+      ...user, 
       ...updates,
-      activityLog: newActivity ? [newActivity, ...users[userIndex].activityLog].slice(0, 50) : users[userIndex].activityLog
+      activityLog: newActivity ? [newActivity, ...(user.activityLog || [])].slice(0, 50) : (user.activityLog || [])
     };
-    users[userIndex] = updatedUser;
-    localStorage.setItem('aki_users', JSON.stringify(users));
-    localStorage.setItem('aki_current_user', JSON.stringify(updatedUser));
+    
     setUser(updatedUser);
+    localStorage.setItem('aki_current_user', JSON.stringify(updatedUser)); // Cache Local
+
+    // Atualiza no FIRESTORE (Nuvem)
+    try {
+        const userRef = doc(db, "users", user.id);
+        const firebaseUpdates: any = { ...updates };
+        if (newActivity) {
+            firebaseUpdates.activityLog = arrayUnion(newActivity);
+        }
+        await updateDoc(userRef, firebaseUpdates);
+    } catch (e) {
+        console.error("Erro ao sincronizar usuário no Firebase", e);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -329,17 +357,14 @@ export default function App() {
     };
 
     // --- FIREBASE WRITE ---
-    // Salva na nuvem. O `useEffect` lá em cima vai pegar essa mudança automaticamente.
     try {
       await addDoc(collection(db, "orders"), newOrderData);
     } catch (e) {
       console.error("Erro ao salvar pedido no Firebase", e);
-      // Fallback para LocalStorage se der erro na rede (opcional)
-      const currentOrders = JSON.parse(localStorage.getItem('aki_orders') || '[]');
-      const fallbackOrder = { id: `OFFLINE-${Date.now()}`, ...newOrderData };
-      localStorage.setItem('aki_orders', JSON.stringify([fallbackOrder, ...currentOrders]));
+      alert("Erro ao salvar pedido no sistema central. Verifique se o Firestore foi criado.");
     }
 
+    // Limpa o carrinho no Firebase
     updateDB({ 
       points: user.points - pointsSpent + pointsEarned, 
       lifetimePoints: user.lifetimePoints + pointsEarned, 
@@ -373,6 +398,13 @@ export default function App() {
           logout={logout} 
         />
         
+        {firebaseError && (
+          <div className="bg-red-600 text-white p-2 text-center text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+            <WifiOff size={14} />
+            {firebaseError}
+          </div>
+        )}
+
         {showRecoveryNudge && (
           <div className="fixed bottom-6 left-6 z-[70] max-w-sm animate-in slide-in-from-left duration-500">
             <div className="bg-white p-6 rounded-[2rem] shadow-2xl border-2 border-red-500 flex items-center gap-4 relative">

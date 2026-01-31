@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   User as UserIcon, 
   ShoppingBag, 
@@ -18,10 +18,12 @@ import {
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
+import { db } from '../firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 
 const AdminDashboard = ({ 
   currentUser, 
-  orders, // Agora recebemos orders diretamente do Firebase via App.tsx
+  orders, 
   updateOrderStatus,
   isLogisticsMode = false 
 }: { 
@@ -32,25 +34,32 @@ const AdminDashboard = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'abandoned' | 'orders'>('orders');
   const [searchQuery, setSearchQuery] = useState('');
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  // Carrega Usuários do Firestore em Tempo Real
+  useEffect(() => {
+    if (!currentUser || !currentUser.isAdmin) return;
+
+    const q = query(collection(db, "users"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const usersList: User[] = [];
+        snapshot.forEach((doc) => {
+            const userData = doc.data() as User;
+            // Filtra o próprio admin da lista se desejar, mas mantém aqui para métricas
+            if (userData.email !== 'lucasaviladark@gmail.com') {
+                usersList.push({ ...userData, id: doc.id });
+            }
+        });
+        setAllUsers(usersList);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // SEGURANÇA: Exige login e permissão de admin para qualquer modo
   if (!currentUser || !currentUser.isAdmin) {
     return <Navigate to="/" />;
   }
-
-  // Parsing seguro de usuários (Ainda local, pode ser migrado depois)
-  const allUsers: User[] = useMemo(() => {
-    try {
-      const usersStr = localStorage.getItem('aki_users');
-      if (!usersStr) return [];
-      const users = JSON.parse(usersStr);
-      if (!Array.isArray(users)) return [];
-      return users.filter((u: any) => u.email !== 'lucasaviladark@gmail.com');
-    } catch (e) {
-      console.error("Erro ao ler usuários", e);
-      return [];
-    }
-  }, []); 
 
   const abandonedCarts = useMemo(() => {
     return allUsers.filter(u => u.persistedCart && u.persistedCart.length > 0);
