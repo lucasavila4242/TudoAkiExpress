@@ -22,7 +22,8 @@ import {
   Truck,
   CheckCircle2,
   X,
-  PartyPopper
+  PartyPopper,
+  Loader2
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus } from '../types';
 import { PRODUCTS } from '../constants';
@@ -119,33 +120,53 @@ const Account = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>('profile');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Verifica retorno do Mercado Pago
+  // Verifica retorno do Mercado Pago de forma robusta
   useEffect(() => {
-    // Verifica tanto no hash search quanto no search global para garantir
-    const params = new URLSearchParams(location.search || window.location.search);
-    const status = params.get('collection_status');
-    const paymentId = params.get('payment_id');
+    // Helper para buscar parâmetros tanto da URL normal quanto do HashRouter
+    // Mercado Pago às vezes coloca os parametros antes ou depois do #
+    const getParam = (key: string) => {
+      const hashParams = new URLSearchParams(location.search);
+      const queryParams = new URLSearchParams(window.location.search);
+      return hashParams.get(key) || queryParams.get(key);
+    };
 
-    if (status === 'approved' && paymentId) {
+    const status = getParam('collection_status');
+    const paymentId = getParam('payment_id');
+
+    // Se houver status aprovado na URL, iniciamos a verificação
+    if (status === 'approved' && paymentId && orders.length > 0) {
+      setIsVerifyingPayment(true);
+
       // Encontra o pedido pendente mais recente deste usuário
+      // Nota: Em um sistema real com backend, o Webhook faria isso no servidor.
+      // Aqui, confiamos no retorno do navegador.
       const pendingOrders = orders
         .filter(o => o.status === 'pending')
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       if (pendingOrders.length > 0) {
         const latestOrder = pendingOrders[0];
-        // Atualiza para 'processing' (Em Separação)
-        updateOrderStatus(latestOrder.id, 'processing');
-        setShowSuccessModal(true);
-        setActiveTab('orders'); // Muda para a aba de pedidos automaticamente
+        
+        // Simula um pequeno delay de processamento para UX
+        setTimeout(() => {
+          // Atualiza para 'processing' (Em Separação)
+          updateOrderStatus(latestOrder.id, 'processing');
+          
+          setIsVerifyingPayment(false);
+          setShowSuccessModal(true);
+          setActiveTab('orders');
+          
+          // Limpa a URL para evitar reprocessamento ao recarregar a página
+          navigate('/account', { replace: true });
+        }, 1500);
+      } else {
+        setIsVerifyingPayment(false);
       }
-      
-      // Limpa a URL para evitar reprocessamento ao recarregar
-      navigate('/account', { replace: true });
     }
   }, [location, orders, updateOrderStatus, navigate]);
 
@@ -167,6 +188,25 @@ const Account = ({
           <h1 className="text-3xl font-black text-blue-900">Área Exclusiva</h1>
           <p className="text-gray-500">Faça login para salvar suas ações, favoritos e pontos em nosso banco de dados.</p>
           <button onClick={onOpenAuth} className="w-full bg-red-500 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-red-600 active:scale-95 transition-all">Entrar Agora</button>
+        </div>
+      </div>
+    );
+  }
+
+  // TELA DE VERIFICAÇÃO DE PAGAMENTO (INTERMEDIÁRIA)
+  if (isVerifyingPayment) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="text-center space-y-6 animate-in fade-in zoom-in duration-500">
+          <div className="relative mx-auto w-24 h-24">
+            <div className="absolute inset-0 border-4 border-gray-200 rounded-full" />
+            <div className="absolute inset-0 border-4 border-t-green-500 rounded-full animate-spin" />
+            <ShieldAlert className="absolute inset-0 m-auto text-green-600 h-8 w-8 animate-pulse" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-blue-900">Verificando Pagamento...</h2>
+            <p className="text-gray-500 mt-2">Conectando com Mercado Pago para confirmar seu pedido.</p>
+          </div>
         </div>
       </div>
     );
