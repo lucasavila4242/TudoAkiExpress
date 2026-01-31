@@ -13,7 +13,8 @@ import {
   Banknote,
   RefreshCcw,
   Search,
-  Users
+  Users,
+  AlertTriangle
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
@@ -134,10 +135,10 @@ Dúvidas? Estamos aqui para ajudar!`;
       case 'pending': 
         return { 
           next: 'processing' as OrderStatus, 
-          label: 'INICIAR SEPARAÇÃO', 
-          icon: Package,
-          color: 'bg-emerald-600 hover:bg-emerald-700',
-          desc: 'Liberar para Estoque'
+          label: 'APROVAR PAGAMENTO', 
+          icon: Banknote,
+          color: 'bg-green-600 hover:bg-green-700',
+          desc: 'Confirmar recebimento manual'
         };
       case 'processing': 
         return { 
@@ -395,16 +396,21 @@ Dúvidas? Estamos aqui para ajudar!`;
                               <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter w-fit flex items-center gap-2 ${
                                 order.status === 'delivered' ? 'bg-green-100 text-green-700' :
                                 order.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                                order.status === 'processing' ? 'bg-amber-100 text-amber-700' : (isLogisticsMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-600')
+                                order.status === 'processing' ? 'bg-emerald-100 text-emerald-700' : (isLogisticsMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-600')
                               }`}>
                                 {order.status === 'pending' ? <Clock size={14}/> : 
                                  order.status === 'processing' ? <Package size={14}/> : 
                                  order.status === 'shipped' ? <Truck size={14}/> : <CheckCircle2 size={14}/>}
                                 
-                                {order.status === 'pending' ? 'AGUARDANDO' : 
+                                {order.status === 'pending' ? 'AGUARDANDO PGTO' : 
                                  order.status === 'processing' ? 'EM SEPARAÇÃO' : 
                                  order.status === 'shipped' ? 'EM ROTA' : 'ENTREGUE'}
                               </span>
+                              {order.status === 'pending' && (
+                                <span className="text-[9px] text-red-500 font-bold flex items-center gap-1">
+                                  <AlertTriangle size={10} /> Verificar PIX
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-8 py-6 text-center align-top">
