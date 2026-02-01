@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2 } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders: Order[], logout: () => void }) => {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -15,6 +15,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const [watchId, setWatchId] = useState<number | null>(null);
 
   // Filtra apenas pedidos que estão "Em Rota" (Shipped)
+  // O Motoboy só vê pedidos que o Admin ou o Sistema marcou como 'shipped' (que é "Chamar Motoboy" no admin)
   const deliveryQueue = orders.filter(o => o.status === 'shipped');
 
   // SEGURANÇA
@@ -22,37 +23,44 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     return <Navigate to="/" />;
   }
 
-  // Lógica de GPS (Tracker)
+  // Lógica de GPS (Tracker) - Inicia quando há uma ordem ativa
   useEffect(() => {
     if (activeOrder) {
       if (!navigator.geolocation) {
-        alert("Seu navegador não suporta geolocalização.");
+        alert("Seu navegador não suporta geolocalização. O rastreamento não funcionará.");
         return;
       }
 
+      console.log("Iniciando rastreamento GPS para ordem:", activeOrder.id);
+
       const id = navigator.geolocation.watchPosition(
         (position) => {
-          const { latitude, longitude, heading } = position.coords;
+          const { latitude, longitude, heading, speed } = position.coords;
           
-          // Atualiza no Firebase para o cliente ver
+          // Atualiza no Firebase na coleção 'tracking'
+          // O cliente (TrackingPage) e o Admin vão escutar este documento
           const locationRef = doc(db, "tracking", activeOrder.id);
+          
           setDoc(locationRef, {
              lat: latitude,
              lng: longitude,
              heading: heading || 0,
+             speed: speed || 0,
              timestamp: Date.now(),
-             orderId: activeOrder.id
-          }, { merge: true });
+             orderId: activeOrder.id,
+             courierName: user.name
+          }, { merge: true }).catch(err => console.error("Erro ao enviar GPS:", err));
         },
         (error) => console.error("Erro GPS:", error),
         {
           enableHighAccuracy: true,
-          timeout: 5000,
+          timeout: 10000,
           maximumAge: 0
         }
       );
       setWatchId(id);
     } else {
+      // Se não tem ordem ativa, para o GPS
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
@@ -62,20 +70,26 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     return () => {
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [activeOrder]);
+  }, [activeOrder?.id]); // Dependência apenas do ID para evitar reinicializações desnecessárias
 
   const handleStartDelivery = (order: Order) => {
-    if (window.confirm(`Iniciar rota para ${order.address}?`)) {
+    if (window.confirm(`Iniciar rota para ${order.address}? Isso ativará seu GPS.`)) {
         setActiveOrder(order);
     }
   };
+
+  const handleCopyTrackingLink = () => {
+      if(!activeOrder) return;
+      const link = `${window.location.origin}/#/track/${activeOrder.id}`;
+      navigator.clipboard.writeText(link);
+      alert("Link de rastreio copiado! Compartilhe com o cliente.");
+  }
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Redimensionar imagem para não estourar o banco (Canvas)
         const img = new Image();
         img.src = reader.result as string;
         img.onload = () => {
@@ -96,7 +110,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
   const finalizeDelivery = async () => {
     if (!activeOrder || !photoPreview || !recipientName) {
-        alert("Preencha o nome e tire a foto.");
+        alert("Preencha o nome e tire a foto para comprovar.");
         return;
     }
 
@@ -105,6 +119,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     try {
         const orderRef = doc(db, "orders", activeOrder.id);
         
+        // 1. Atualiza Status do Pedido
         await updateDoc(orderRef, {
             status: 'delivered',
             deliveryProof: {
@@ -114,9 +129,11 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             }
         });
 
-        // Limpa tracking
+        // 2. Limpa dados de rastreamento (Opcional: ou mantém como histórico de rota)
+        // Vamos manter por enquanto, mas parar de atualizar
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
         
+        // 3. Reseta Estado Local
         setActiveOrder(null);
         setShowDeliveryModal(false);
         setPhotoPreview(null);
@@ -131,16 +148,16 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white pb-20">
-      {/* Header */}
-      <div className="bg-slate-800 p-6 shadow-lg flex justify-between items-center sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-900 text-white pb-20 font-sans">
+      {/* Header Fixo */}
+      <div className="bg-slate-800 p-6 shadow-lg flex justify-between items-center sticky top-0 z-50 border-b border-slate-700">
         <div className="flex items-center gap-3">
             <div className="bg-emerald-500 p-2 rounded-full animate-pulse">
                 <Bike className="text-white" size={24} />
             </div>
             <div>
                 <h1 className="font-black text-xl leading-none">TudoAki Moto</h1>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Painel do Entregador</p>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Painel Logístico</p>
             </div>
         </div>
         <button onClick={logout} className="bg-red-500/20 text-red-400 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
@@ -148,68 +165,104 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         </button>
       </div>
 
-      <div className="p-4 space-y-6">
-        {/* Status Ativo */}
+      <div className="p-4 space-y-6 max-w-lg mx-auto">
+        {/* Painel de Rota Ativa */}
         {activeOrder ? (
-             <div className="bg-emerald-600 rounded-[2rem] p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-top">
-                <div className="absolute top-0 right-0 p-4 opacity-20"><Navigation size={100} /></div>
+             <div className="bg-emerald-600 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden animate-in slide-in-from-top duration-500 ring-4 ring-emerald-500/30">
+                <div className="absolute top-0 right-0 p-4 opacity-20"><Navigation size={120} /></div>
+                
                 <div className="relative z-10">
-                    <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">GPS Ativo • Rastreando</span>
-                    <h2 className="text-3xl font-black mt-4 mb-2">Em Rota</h2>
-                    <p className="text-emerald-100 font-medium text-lg mb-6">{activeOrder.address}</p>
+                    <div className="flex justify-between items-start mb-4">
+                        <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center gap-2">
+                            <div className="w-2 h-2 bg-white rounded-full" /> GPS Ativo
+                        </span>
+                        <button onClick={handleCopyTrackingLink} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors" title="Copiar Link de Rastreio">
+                            <Share2 size={18} />
+                        </button>
+                    </div>
+
+                    <h2 className="text-4xl font-black mt-2 mb-1 leading-none">Em Rota</h2>
+                    <p className="text-emerald-200 text-sm font-bold uppercase tracking-wide mb-6">Pedido #{activeOrder.id}</p>
+                    
+                    <div className="bg-black/20 rounded-2xl p-4 mb-6 backdrop-blur-sm">
+                        <p className="text-emerald-100 text-xs font-black uppercase mb-1">Destino</p>
+                        <p className="text-white font-bold text-xl leading-tight">{activeOrder.address}</p>
+                    </div>
                     
                     <button 
                         onClick={() => setShowDeliveryModal(true)}
-                        className="w-full bg-white text-emerald-700 py-4 rounded-xl font-black text-lg shadow-lg flex items-center justify-center gap-2"
+                        className="w-full bg-white text-emerald-700 py-4 rounded-xl font-black text-lg shadow-lg flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all"
                     >
-                        <CheckCircle2 /> FINALIZAR ENTREGA
+                        <CheckCircle2 size={24} /> FINALIZAR ENTREGA
                     </button>
+                    
                     <button 
-                         onClick={() => setActiveOrder(null)}
-                         className="w-full mt-3 text-emerald-200 text-xs font-bold uppercase tracking-widest underline"
+                         onClick={() => {
+                            if(window.confirm("Cancelar rota atual? O GPS será desligado.")) {
+                                setActiveOrder(null);
+                            }
+                         }}
+                         className="w-full mt-4 text-emerald-200 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
                     >
-                        Cancelar Rota (Erro)
+                        Cancelar / Ocorrência
                     </button>
                 </div>
              </div>
         ) : (
-            <div className="bg-slate-800 rounded-2xl p-6 text-center border border-slate-700">
-                <h2 className="text-xl font-bold text-slate-200">Aguardando Rotas</h2>
-                <p className="text-slate-400 text-sm mt-1">Selecione um pedido abaixo para iniciar.</p>
+            <div className="bg-slate-800 rounded-[2rem] p-8 text-center border border-slate-700 shadow-xl">
+                <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
+                    <Navigation size={32} />
+                </div>
+                <h2 className="text-xl font-black text-slate-200">Aguardando Rotas</h2>
+                <p className="text-slate-400 text-sm mt-2 max-w-xs mx-auto">Selecione um pedido da fila abaixo para iniciar o GPS e a entrega.</p>
             </div>
         )}
 
-        {/* Lista de Pedidos */}
-        <div className="space-y-4">
-            <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest ml-2">Fila de Entrega ({deliveryQueue.length})</h3>
+        {/* Fila de Pedidos */}
+        <div className="space-y-4 pt-4">
+            <div className="flex items-center justify-between px-2">
+                <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest">Fila de Entrega ({deliveryQueue.length})</h3>
+                <span className="text-[10px] font-bold bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Cascavel</span>
+            </div>
             
             {deliveryQueue.length === 0 ? (
-                <div className="text-center py-10 opacity-30">
-                    <Bike size={48} className="mx-auto mb-2" />
-                    <p>Nenhuma entrega pendente.</p>
+                <div className="text-center py-12 opacity-30 border-2 border-dashed border-slate-700 rounded-3xl">
+                    <Bike size={48} className="mx-auto mb-4" />
+                    <p className="font-bold">Nenhuma entrega disponível.</p>
                 </div>
             ) : (
                 deliveryQueue.map(order => (
-                    <div key={order.id} className={`bg-white text-slate-900 p-5 rounded-3xl shadow-lg border-l-8 ${activeOrder?.id === order.id ? 'border-emerald-500 opacity-50 pointer-events-none' : 'border-blue-500'}`}>
-                        <div className="flex justify-between items-start mb-3">
-                            <span className="bg-slate-100 px-2 py-1 rounded-md text-xs font-black">{order.id}</span>
-                            <span className="text-xs font-bold text-slate-400">{new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <div key={order.id} className={`bg-white text-slate-900 p-6 rounded-[2rem] shadow-lg border-l-8 transition-all ${activeOrder?.id === order.id ? 'border-emerald-500 opacity-50 pointer-events-none scale-95 grayscale' : 'border-blue-500 hover:scale-[1.02]'}`}>
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-black tracking-wide text-slate-600">#{order.id}</span>
+                            <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                                <Clock size={12} />
+                                {new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
                         </div>
-                        <div className="flex items-start gap-3 mb-4">
-                            <MapPin className="text-red-500 shrink-0 mt-1" />
-                            <p className="font-bold text-lg leading-tight">{order.address}</p>
+                        
+                        <div className="flex items-start gap-3 mb-5">
+                            <MapPin className="text-red-500 shrink-0 mt-1 fill-red-100" size={20} />
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase">Entregar em</p>
+                                <p className="font-black text-xl leading-tight text-slate-800">{order.address}</p>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 mb-4 bg-slate-50 p-3 rounded-xl">
-                            <UserIcon size={16} className="text-slate-400" />
-                            <span className="text-sm font-medium">{order.items.length} volumes • {order.paymentMethod.toUpperCase()}</span>
+
+                        <div className="flex items-center gap-3 mb-5 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div className="bg-white p-2 rounded-lg shadow-sm"><UserIcon size={16} className="text-slate-400" /></div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase text-slate-400">Detalhes</p>
+                                <span className="text-sm font-bold text-slate-700">{order.items.length} volumes • {order.paymentMethod.toUpperCase()}</span>
+                            </div>
                         </div>
                         
                         {!activeOrder && (
                             <button 
                                 onClick={() => handleStartDelivery(order)}
-                                className="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase tracking-wide hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                className="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-wide hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
                             >
-                                <Navigation size={18} /> INICIAR ROTA
+                                <Navigation size={20} /> INICIAR ROTA
                             </button>
                         )}
                     </div>
@@ -218,33 +271,35 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         </div>
       </div>
 
-      {/* Modal de Finalização */}
+      {/* Modal de Finalização (Full Screen Mobile) */}
       {showDeliveryModal && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-white text-slate-900 w-full sm:max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300">
-                <h2 className="text-2xl font-black text-blue-900 mb-6">Comprovante de Entrega</h2>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-white text-slate-900 w-full sm:max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto">
+                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+                <h2 className="text-2xl font-black text-blue-900 mb-1">Confirmar Entrega</h2>
+                <p className="text-sm text-gray-500 mb-8 font-medium">Preencha os dados para liberar o pedido.</p>
                 
                 <div className="space-y-6">
                     <div>
-                        <label className="block text-xs font-black uppercase text-gray-400 mb-2">Quem recebeu?</label>
+                        <label className="block text-xs font-black uppercase text-gray-400 mb-2 ml-1">Quem recebeu?</label>
                         <input 
                             value={recipientName}
                             onChange={(e) => setRecipientName(e.target.value)}
-                            className="w-full bg-gray-100 border-none rounded-xl p-4 font-bold text-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                            className="w-full bg-gray-100 border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-2xl p-4 font-bold text-lg outline-none transition-all placeholder:font-medium"
                             placeholder="Nome do recebedor"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-black uppercase text-gray-400 mb-2">Foto do Local / Pacote</label>
-                        <label className="block w-full aspect-video bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors relative overflow-hidden">
+                        <label className="block text-xs font-black uppercase text-gray-400 mb-2 ml-1">Foto do Local / Pacote</label>
+                        <label className={`block w-full aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group ${photoPreview ? 'border-emerald-500 bg-white' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
                             {photoPreview ? (
                                 <img src={photoPreview} className="absolute inset-0 w-full h-full object-cover" />
                             ) : (
-                                <>
-                                    <Camera size={32} className="text-gray-400 mb-2" />
-                                    <span className="text-xs font-bold text-gray-500">Toque para tirar foto</span>
-                                </>
+                                <div className="text-center p-4">
+                                    <div className="bg-white p-3 rounded-full shadow-sm inline-block mb-2 group-hover:scale-110 transition-transform"><Camera size={24} className="text-blue-500" /></div>
+                                    <p className="text-xs font-bold text-gray-500">Toque para abrir a câmera</p>
+                                </div>
                             )}
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
                         </label>
@@ -253,16 +308,16 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                     <div className="flex gap-3 pt-4">
                         <button 
                             onClick={() => setShowDeliveryModal(false)}
-                            className="flex-1 py-4 rounded-xl font-bold text-gray-500 bg-gray-100"
+                            className="flex-1 py-4 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
                         >
                             Voltar
                         </button>
                         <button 
                             onClick={finalizeDelivery}
                             disabled={isSubmitting || !photoPreview || !recipientName}
-                            className="flex-1 py-4 rounded-xl font-black text-white bg-emerald-500 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="flex-1 py-4 rounded-xl font-black text-white bg-emerald-500 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all active:scale-95"
                         >
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : 'CONFIRMAR'}
+                            {isSubmitting ? <Loader2 className="animate-spin" /> : 'FINALIZAR'}
                         </button>
                     </div>
                 </div>

@@ -319,7 +319,7 @@ export default function App() {
                     <Route path="/admin" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} />} />
                     <Route path="/logistica" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} isLogisticsMode={true} />} />
                     
-                    {/* Rota PÚBLICA de rastreamento (acessível por todos) */}
+                    {/* Rota PÚBLICA de rastreamento (acessível por todos, inclusive sem login) */}
                     <Route path="/track/:orderId" element={<TrackingPage />} />
                   </Routes>
                 </main>
