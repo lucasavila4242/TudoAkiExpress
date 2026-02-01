@@ -1,32 +1,20 @@
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { HashRouter, Routes, Route, Link } from 'react-router-dom';
 import { 
   ShoppingBag, 
   Search, 
-  Menu, 
   X, 
-  ChevronRight, 
-  TrendingUp, 
-  Clock, 
-  Truck, 
-  Star, 
-  ChevronLeft,
   ShoppingCart,
-  CheckCircle2,
-  BellRing,
-  Smartphone,
   Award,
   User,
-  Zap,
   Heart,
   LogOut,
   ShieldAlert,
-  AlertCircle,
   Package,
   WifiOff
 } from 'lucide-react';
-import { PRODUCTS, CATEGORIES } from './constants';
+import { PRODUCTS } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
 import { db } from './firebase'; 
 import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion, setDoc } from 'firebase/firestore';
@@ -44,11 +32,12 @@ import TrackingPage from './pages/TrackingPage';
 // Components
 import AuthModal from './components/AuthModal';
 
-// ... (Navbar e CartSidebar mantidos iguais ao original) ...
+// --- COMPONENTS AUXILIARES ---
+
 const Navbar = ({ cartCount, wishlistCount, toggleCart, user, openAuth, logout }: any) => {
   const [searchQuery, setSearchQuery] = useState('');
   
-  const searchResults = useMemo(() => {
+  const searchResults = React.useMemo(() => {
     if (!searchQuery) return [];
     return PRODUCTS.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 5);
   }, [searchQuery]);
@@ -185,6 +174,8 @@ const CartSidebar = ({ isOpen, onClose, cart, updateQuantity, navigateToCheckout
   );
 };
 
+// --- APP PRINCIPAL ---
+
 export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -192,12 +183,14 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showRecoveryNudge, setShowRecoveryNudge] = useState(false);
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+  
   const [user, setUser] = useState<UserType | null>(() => {
     const saved = localStorage.getItem('aki_current_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Carrega pedidos iniciais e Firebase
+  // FIREBASE LISTENER (PEDIDOS)
   useEffect(() => {
     try {
       const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
@@ -208,6 +201,10 @@ export default function App() {
           liveOrders.push({ id: doc.id, ...data } as Order);
         });
         setOrders(liveOrders);
+        setFirebaseError(null);
+      }, (error) => {
+        console.error("Erro Firebase:", error);
+        setFirebaseError("Erro de conexão com servidor.");
       });
       return () => unsubscribe();
     } catch (e) {
@@ -215,48 +212,34 @@ export default function App() {
     }
   }, []);
 
-  const updateDB = useCallback((updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
+  // Lógica de Atualização de Usuário (DB + Local)
+  const updateDB = useCallback(async (updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
-    const newActivity: UserActivity | null = activity ? {
-      id: Math.random().toString(36).substr(2, 9),
-      type: activityType,
-      action: activity,
-      timestamp: new Date().toISOString()
-    } : null;
-    
-    const updatedUser = { 
-      ...user, 
-      ...updates,
-      activityLog: newActivity ? [newActivity, ...(user.activityLog || [])].slice(0, 50) : (user.activityLog || [])
-    };
-    
+    const newActivity: UserActivity | null = activity ? { id: Math.random().toString(36).substr(2, 9), type: activityType, action: activity, timestamp: new Date().toISOString() } : null;
+    const updatedUser = { ...user, ...updates, activityLog: newActivity ? [newActivity, ...(user.activityLog || [])].slice(0, 50) : (user.activityLog || []) };
     setUser(updatedUser);
     localStorage.setItem('aki_current_user', JSON.stringify(updatedUser));
-    
     try {
         const userRef = doc(db, "users", user.id);
         const firebaseUpdates: any = { ...updates };
         if (newActivity) firebaseUpdates.activityLog = arrayUnion(newActivity);
-        setDoc(userRef, firebaseUpdates, { merge: true });
+        await setDoc(userRef, firebaseUpdates, { merge: true });
     } catch (e) { console.error("Erro sync:", e); }
   }, [user]);
 
+  // Carrega Carrinho/Wishlist do Usuário Logado
   useEffect(() => {
     if (user) {
       setCart(user.persistedCart || []);
       setWishlist(user.persistedWishlist || []);
-      
       if (user.persistedCart?.length > 0 && !user.isCourier) {
         const lastUpdate = new Date(user.lastCartUpdate || 0);
         const now = new Date();
         const diffInHours = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
-        if (diffInHours > 0.5) {
-           setTimeout(() => setShowRecoveryNudge(true), 1500);
-        }
+        if (diffInHours > 0.5) setTimeout(() => setShowRecoveryNudge(true), 1500);
       }
     } else {
-      setCart([]);
-      setWishlist([]);
+      setCart([]); setWishlist([]);
     }
   }, [user?.id]);
 
@@ -264,15 +247,8 @@ export default function App() {
     setCart(prev => {
       let newCart;
       const existing = prev.find(i => i.id === product.id);
-      if (existing) {
-        newCart = prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      } else {
-        newCart = [...prev, { ...product, quantity: 1 }];
-      }
-      if (user) updateDB({ 
-        persistedCart: newCart, 
-        lastCartUpdate: new Date().toISOString() 
-      }, `Adicionou "${product.name}" ao carrinho`, 'cart');
+      if (existing) { newCart = prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i); } else { newCart = [...prev, { ...product, quantity: 1 }]; }
+      if (user) updateDB({ persistedCart: newCart, lastCartUpdate: new Date().toISOString() }, `Adicionou "${product.name}" ao carrinho`, 'cart');
       return newCart;
     });
   };
@@ -288,44 +264,19 @@ export default function App() {
 
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => {
-      const newCart = prev.map(item => {
-        if (item.id === id) return { ...item, quantity: Math.max(0, item.quantity + delta) };
-        return item;
-      }).filter(i => i.quantity > 0);
-      if (user) updateDB({ 
-        persistedCart: newCart,
-        lastCartUpdate: new Date().toISOString()
-      });
+      const newCart = prev.map(item => { if (item.id === id) return { ...item, quantity: Math.max(0, item.quantity + delta) }; return item; }).filter(i => i.quantity > 0);
+      if (user) updateDB({ persistedCart: newCart, lastCartUpdate: new Date().toISOString() });
       return newCart;
     });
   };
 
-  const logout = () => {
-    localStorage.removeItem('aki_current_user');
-    setUser(null);
-  };
+  const logout = () => { localStorage.removeItem('aki_current_user'); setUser(null); };
 
   const onOrderComplete = async (pointsEarned: number, pointsSpent: number, orderDetails: any) => {
     if (!user) return;
-    
-    const newOrderData = {
-      userId: user.id,
-      items: [...cart],
-      total: orderDetails.total,
-      status: 'pending',
-      timestamp: new Date().toISOString(),
-      address: orderDetails.address,
-      paymentMethod: orderDetails.paymentMethod
-    };
-
+    const newOrderData = { userId: user.id, items: [...cart], total: orderDetails.total, status: 'pending', timestamp: new Date().toISOString(), address: orderDetails.address, paymentMethod: orderDetails.paymentMethod };
     try { await addDoc(collection(db, "orders"), newOrderData); } catch (e) { console.error("Erro save order:", e); }
-
-    updateDB({ 
-      points: user.points - pointsSpent + pointsEarned, 
-      lifetimePoints: user.lifetimePoints + pointsEarned, 
-      persistedCart: [],
-      lastCartUpdate: undefined
-    }, `Finalizou um pedido`, 'order');
+    updateDB({ points: user.points - pointsSpent + pointsEarned, lifetimePoints: user.lifetimePoints + pointsEarned, persistedCart: [], lastCartUpdate: undefined }, `Finalizou um pedido`, 'order');
     setCart([]);
   };
 
@@ -339,11 +290,11 @@ export default function App() {
   return (
     <HashRouter>
       <div className="flex flex-col min-h-screen">
-        {/* LÓGICA DE RENDERIZAÇÃO EXCLUSIVA DO MOTOBOY */}
+        
+        {/* CONDICIONAL MESTRA: SE FOR MOTOBOY, RENDERIZA APENAS O DASHBOARD DELE */}
         {user?.isCourier ? (
             <MotoboyDashboard user={user} orders={orders} logout={logout} />
         ) : (
-            // LAYOUT PADRÃO (CLIENTE / ADMIN / VISITANTE)
             <>
                 <Navbar 
                   cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} 
@@ -354,21 +305,9 @@ export default function App() {
                   logout={logout} 
                 />
                 
-                {showRecoveryNudge && (
-                  <div className="fixed bottom-6 left-6 z-[70] max-w-sm animate-in slide-in-from-left duration-500">
-                    <div className="bg-white p-6 rounded-[2rem] shadow-2xl border-2 border-red-500 flex items-center gap-4 relative">
-                      <button onClick={() => setShowRecoveryNudge(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={16}/></button>
-                      <div className="bg-red-100 p-3 rounded-2xl text-red-500 animate-bounce">
-                        <ShoppingBag />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-blue-900 leading-tight">Esqueceu algo? 🛒</p>
-                        <p className="text-xs text-gray-500 mt-1">Seus itens favoritos ainda estão salvos. Finalize agora!</p>
-                        <button onClick={() => { setIsCartOpen(true); setShowRecoveryNudge(false); }} className="text-[10px] font-black uppercase text-red-500 mt-2 hover:underline">Ver meu carrinho agora</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {firebaseError && <div className="bg-red-600 text-white p-2 text-center text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2"><WifiOff size={14} />{firebaseError}</div>}
+
+                {showRecoveryNudge && <div className="fixed bottom-6 left-6 z-[70] max-w-sm animate-in slide-in-from-left duration-500"><div className="bg-white p-6 rounded-[2rem] shadow-2xl border-2 border-red-500 flex items-center gap-4 relative"><button onClick={() => setShowRecoveryNudge(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={16}/></button><div className="bg-red-100 p-3 rounded-2xl text-red-500 animate-bounce"><ShoppingBag /></div><div><p className="text-sm font-black text-blue-900 leading-tight">Esqueceu algo? 🛒</p><p className="text-xs text-gray-500 mt-1">Seus itens favoritos ainda estão salvos. Finalize agora!</p><button onClick={() => { setIsCartOpen(true); setShowRecoveryNudge(false); }} className="text-[10px] font-black uppercase text-red-500 mt-2 hover:underline">Ver meu carrinho agora</button></div></div></div>}
 
                 <main className="flex-grow">
                   <Routes>
@@ -376,19 +315,19 @@ export default function App() {
                     <Route path="/store" element={<Store addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
                     <Route path="/product/:id" element={<ProductDetails addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} wishlist={wishlist} toggleWishlist={toggleWishlist} />} />
                     <Route path="/checkout" element={<Checkout cart={cart} user={user || { name: 'Visitante', points: 0, lifetimePoints: 0, tier: 'Bronze', id: 'guest', email: '', whatsapp: '', persistedCart: [], persistedWishlist: [], activityLog: [] } as any} onComplete={onOrderComplete} />} />
-                    <Route 
-                      path="/account" 
-                      element={
-                        <Account 
-                          user={user} 
-                          wishlist={wishlist} 
-                          orders={orders.filter(o => o.userId === user?.id)} 
-                          toggleWishlist={toggleWishlist} 
-                          addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} 
-                          onOpenAuth={() => setIsAuthModalOpen(true)}
-                          updateOrderStatus={updateOrderStatus}
-                        />
-                      } 
-                    />
+                    <Route path="/account" element={<Account user={user} wishlist={wishlist} orders={orders.filter(o => o.userId === user?.id)} toggleWishlist={toggleWishlist} addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} onOpenAuth={() => setIsAuthModalOpen(true)} updateOrderStatus={updateOrderStatus} />} />
                     <Route path="/admin" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} />} />
-                    <Route path="/logistica" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} isLogistics
+                    <Route path="/logistica" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} isLogisticsMode={true} />} />
+                    
+                    {/* Rota PÚBLICA de rastreamento (acessível por todos) */}
+                    <Route path="/track/:orderId" element={<TrackingPage />} />
+                  </Routes>
+                </main>
+                <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={updateQuantity} navigateToCheckout={() => { setIsCartOpen(false); window.location.hash = '/checkout'; }} />
+                <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} onAuthSuccess={(u) => setUser(u)} />
+            </>
+        )}
+      </div>
+    </HashRouter>
+  );
+}
