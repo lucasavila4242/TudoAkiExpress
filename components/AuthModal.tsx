@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Smartphone, ShieldCheck } from 'lucide-react';
+import { X, Mail, Lock, User, Smartphone, ShieldCheck, Bike } from 'lucide-react';
 import { User as UserType, UserActivity } from '../types';
 import { db } from '../firebase';
 import { collection, query, where, getDocs, setDoc, doc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -26,7 +26,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
 
     const OWNER_EMAIL = 'lucasaviladark@gmail.com';
     const OWNER_PASS = 'Lucasgamer123!';
+    
+    // Credenciais do Motoboy
+    const COURIER_EMAIL = 'motoboy@tudoaki.com';
+    const COURIER_PASS = 'moto123';
+
     const isLoggingAsOwner = formData.email === OWNER_EMAIL && formData.password === OWNER_PASS;
+    const isLoggingAsCourier = formData.email === COURIER_EMAIL && formData.password === COURIER_PASS;
 
     try {
       const usersRef = collection(db, "users");
@@ -43,10 +49,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
         }
 
         const newUser: UserType = {
-          id: isLoggingAsOwner ? 'admin-lucas' : doc(usersRef).id, // Gera ID automático ou usa ID fixo pro admin
+          id: isLoggingAsOwner ? 'admin-lucas' : doc(usersRef).id, 
           name: isLoggingAsOwner ? 'Lucas (Proprietário)' : formData.name,
           email: formData.email,
-          password: formData.password, // Nota: Em produção real, senhas não devem ser salvas puras
+          password: formData.password, 
           whatsapp: isLoggingAsOwner ? '(45) 99999-9999' : formData.whatsapp,
           points: isLoggingAsOwner ? 999999 : 50,
           lifetimePoints: isLoggingAsOwner ? 999999 : 50,
@@ -54,7 +60,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
           isAdmin: isLoggingAsOwner,
           persistedCart: [],
           persistedWishlist: [],
-          createdAt: new Date().toISOString(), // Data de Cadastro
+          createdAt: new Date().toISOString(),
           activityLog: [{
             id: 'initial',
             type: 'auth',
@@ -63,22 +69,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
           }]
         };
 
-        // Salva no Firestore
         await setDoc(doc(db, "users", newUser.id), newUser);
-        
-        // Salva LocalStorage como backup/cache
         localStorage.setItem('aki_current_user', JSON.stringify(newUser));
-        
         onAuthSuccess(newUser);
         onClose();
 
       } else {
         // LOGIN
-        // Primeiro verifica se é o login mestre hardcoded (fallback)
+        
+        // 1. Login Hardcoded de Proprietário
         if (isLoggingAsOwner) {
-            // Tenta buscar o admin no banco, se não existir, cria
             const adminDocRef = doc(db, "users", "admin-lucas");
-            // Lógica simplificada: Assume sucesso e recria objeto admin
             const adminUser: UserType = {
                 id: 'admin-lucas',
                 name: 'Lucas (Proprietário)',
@@ -93,13 +94,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
                 persistedWishlist: [],
                 activityLog: []
             };
-            await setDoc(adminDocRef, adminUser, { merge: true }); // Garante que existe
+            await setDoc(adminDocRef, adminUser, { merge: true });
             onAuthSuccess(adminUser);
             onClose();
             setLoading(false);
             return;
         }
 
+        // 2. Login Hardcoded de Motoboy
+        if (isLoggingAsCourier) {
+            const courierUser: UserType = {
+                id: 'courier-01',
+                name: 'Motoboy Flash',
+                email: COURIER_EMAIL,
+                whatsapp: '(45) 99999-9999',
+                points: 0,
+                lifetimePoints: 0,
+                tier: 'Bronze',
+                isAdmin: false,
+                isCourier: true,
+                persistedCart: [],
+                persistedWishlist: [],
+                activityLog: []
+            };
+            onAuthSuccess(courierUser);
+            localStorage.setItem('aki_current_user', JSON.stringify(courierUser));
+            onClose();
+            setLoading(false);
+            return;
+        }
+
+        // 3. Login Normal (Clientes)
         const q = query(usersRef, where("email", "==", formData.email), where("password", "==", formData.password));
         const querySnapshot = await getDocs(q);
 
@@ -107,7 +132,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
           const userDoc = querySnapshot.docs[0];
           const userData = userDoc.data() as UserType;
 
-          // Atualiza log de atividade
           const newActivity: UserActivity = {
             id: Math.random().toString(36).substr(2, 9),
             type: 'auth',
@@ -175,6 +199,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess })
           <button disabled={loading} type="submit" className="w-full bg-red-500 text-white py-4 rounded-2xl font-black text-lg shadow-xl hover:bg-red-600 active:scale-95 transition-all mt-4 disabled:opacity-70 disabled:cursor-not-allowed">
             {loading ? 'Processando...' : (mode === 'login' ? 'Entrar no Sistema' : 'Finalizar Cadastro')}
           </button>
+          
+          {mode === 'login' && (
+             <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center">
+                <p className="text-[10px] uppercase font-bold text-gray-400 mb-2">Área de Parceiros</p>
+                <div className="flex justify-center gap-2">
+                    <Bike className="text-gray-400" size={16} />
+                    <span className="text-xs font-bold text-gray-500">Acesso Motoboy Habilitado</span>
+                </div>
+             </div>
+          )}
           
           <div className="text-center pt-2">
             <button type="button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} className="text-sm font-bold text-blue-900 hover:text-red-500">

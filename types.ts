@@ -6,7 +6,7 @@ export interface Product {
   price: number;
   originalPrice?: number;
   image: string;
-  images?: string[]; // Suporte para galeria
+  images?: string[]; 
   category: string;
   rating: number;
   reviewsCount: number;
@@ -16,7 +16,7 @@ export interface Product {
   hasFreeShipping?: boolean;
   tags: string[];
   upsellIds?: string[];
-  benefits?: string[]; // Novos diferenciais destacados em grid
+  benefits?: string[];
 }
 
 export interface CartItem extends Product {
@@ -32,6 +32,21 @@ export interface UserActivity {
 
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered';
 
+export interface DeliveryProof {
+  photo: string; // Base64 da imagem
+  recipientName: string;
+  timestamp: string;
+  location?: { lat: number, lng: number };
+}
+
+export interface CourierLocation {
+  orderId: string;
+  lat: number;
+  lng: number;
+  timestamp: number;
+  heading?: number; // Direção da moto
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -41,6 +56,8 @@ export interface Order {
   timestamp: string;
   address: string;
   paymentMethod: string;
+  deliveryProof?: DeliveryProof; // Novo campo
+  courierId?: string; // Novo campo
 }
 
 export interface User {
@@ -54,11 +71,12 @@ export interface User {
   tier: 'Bronze' | 'Prata' | 'Ouro';
   address?: string;
   isAdmin?: boolean;
+  isCourier?: boolean; // Novo campo
   persistedCart: CartItem[];
   persistedWishlist: string[];
   activityLog: UserActivity[];
-  lastCartUpdate?: string; // Timestamp da última alteração no carrinho
-  createdAt?: string; // Data de cadastro do cliente
+  lastCartUpdate?: string; 
+  createdAt?: string; 
 }
 
 export interface OrderLead {
