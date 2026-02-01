@@ -150,6 +150,10 @@ const Navbar = ({
 
                <div className="h-6 w-px bg-gray-200 mx-1"></div>
 
+               <Link to="/account" className="p-2.5 text-gray-600 hover:text-blue-900 hover:bg-gray-100 rounded-xl transition-all" title="Minha Conta">
+                  <User size={22} />
+               </Link>
+
                <Link to="/account" className="relative p-2.5 text-gray-600 hover:text-red-500 hover:bg-gray-100 rounded-xl transition-all">
                   <Heart size={22} className={wishlistCount > 0 ? "fill-red-500 text-red-500" : ""} />
                   {wishlistCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>}
