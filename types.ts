@@ -56,8 +56,9 @@ export interface Order {
   timestamp: string;
   address: string;
   paymentMethod: string;
-  deliveryProof?: DeliveryProof; // Novo campo
-  courierId?: string; // Novo campo
+  shippedAt?: string; // Novo campo: Hora que o motoboy saiu
+  deliveryProof?: DeliveryProof; 
+  courierId?: string; 
 }
 
 export interface User {

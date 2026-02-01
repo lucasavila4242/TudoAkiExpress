@@ -205,8 +205,9 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
   // Função para criar Preferência do Mercado Pago e Redirecionar
   const handleMercadoPagoRedirect = async () => {
     try {
-      setProcessingMessage("Conectando ao Ambiente Seguro Mercado Pago...");
+      setProcessingMessage("Calculando descontos e gerando pagamento...");
       
+      // 1. Prepara a lista base de itens do carrinho
       const items = cart.map(item => ({
         id: item.id,
         title: item.name,
@@ -215,10 +216,10 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
         category_id: "electronics",
         quantity: item.quantity,
         currency_id: "BRL",
-        unit_price: item.price
+        unit_price: Number(item.price)
       }));
 
-      // Adicionar frete
+      // 2. Adiciona o frete como um item para que ele também possa ser descontado se necessário
       if (shipping > 0) {
         items.push({
           id: "shipping",
@@ -228,26 +229,60 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
           category_id: "services",
           quantity: 1,
           currency_id: "BRL",
-          unit_price: shipping
+          unit_price: Number(shipping)
         });
       }
 
-      // Adicionar item de desconto (negativo) se houver
+      // 3. Lógica de Distribuição de Desconto (Pontos + Cupom)
+      // O Mercado Pago não aceita itens com valor negativo facilmente, então a estratégia
+      // mais robusta é reduzir o unit_price dos itens até que o desconto total seja aplicado.
+      
       const totalDiscount = couponDiscountValue + pointsValue;
+
       if (totalDiscount > 0) {
-         if (items.length > 0 && items[0].unit_price > totalDiscount) {
-            items[0].unit_price -= totalDiscount;
-            items[0].description += ` (Desconto aplicado: R$ ${totalDiscount.toFixed(2)})`;
-         }
+        let remainingDiscount = totalDiscount;
+
+        // Iteramos sobre todos os itens para aplicar o desconto onde for possível
+        for (let i = 0; i < items.length; i++) {
+            if (remainingDiscount <= 0.01) break; // Desconto aplicado
+
+            const currentItem = items[i];
+            const itemTotalValue = currentItem.unit_price * currentItem.quantity;
+
+            if (itemTotalValue >= remainingDiscount) {
+                // O item atual cobre todo o desconto restante
+                // Calculamos quanto descontar por unidade
+                const discountPerUnit = remainingDiscount / currentItem.quantity;
+                
+                // Aplicamos o desconto
+                currentItem.unit_price = Number((currentItem.unit_price - discountPerUnit).toFixed(2));
+                
+                // Adicionamos nota na descrição
+                if (currentItem.id !== 'shipping') {
+                   currentItem.description = `(Desconto aplicado: R$ ${remainingDiscount.toFixed(2)}) ${currentItem.description}`;
+                }
+
+                remainingDiscount = 0;
+            } else {
+                // O desconto é MAIOR que o valor total deste item
+                // Reduzimos o item a 0 (ou removemos, mas MP prefere manter registro)
+                // Vamos deixar o item com valor 0.00 (Gratuito) e levar o restante do desconto para o próximo item
+                
+                const discountUsed = itemTotalValue;
+                currentItem.unit_price = 0;
+                currentItem.description = `(Item 100% abonado por pontos/cupom) ${currentItem.description}`;
+                
+                remainingDiscount -= discountUsed;
+            }
+        }
       }
 
-      // CORREÇÃO: SANITIZAÇÃO DO EMAIL DO PAGADOR
+      // 4. Configuração do Pagador
       const isOwner = user.email === 'lucasaviladark@gmail.com';
       const payerEmail = (isOwner || !user.email.includes('@')) 
         ? `cliente.teste.${Date.now()}@gmail.com` 
         : user.email;
 
-      // Sanitização do Telefone
       const cleanPhone = data.whatsapp.replace(/\D/g, '') || "45999999999";
 
       const preferenceData = {
@@ -299,15 +334,14 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
       const result = await response.json();
       
       // SALVA O PEDIDO LOCALMENTE ANTES DE REDIRECIONAR
-      // Isso garante que se o cliente fechar a aba durante o pagamento, o pedido já exista como "Pendente" no Admin (se estiverem no mesmo dispositivo)
       onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0, {
-        id: result.external_reference, // Opcional, ou deixa gerar no App.tsx
+        id: result.external_reference,
         total: total,
         address: data.address,
         paymentMethod: 'mercadopago'
       });
 
-      // Redirecionar para o Checkout Pro (URL de produção)
+      // Redirecionar para o Checkout Pro
       if (result.init_point) {
         window.location.href = result.init_point;
       } else {
@@ -325,8 +359,6 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentStatus('processing');
-    
-    // Independente de ser PIX ou Cartão, usamos o Checkout Pro do MP
     await handleMercadoPagoRedirect();
   };
 

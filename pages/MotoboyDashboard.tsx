@@ -2,9 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+
+declare const L: any; // Leaflet Global
 
 const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders: Order[], logout: () => void }) => {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -13,15 +15,91 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  // Filtra apenas pedidos que estão "Em Rota" (Shipped)
-  // O Motoboy só vê pedidos que o Admin ou o Sistema marcou como 'shipped' (que é "Chamar Motoboy" no admin)
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  
+  // Referência para controlar o som de notificação
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Referência para rastrear o tamanho anterior da fila e detectar novos pedidos
+  const prevQueueLength = useRef<number>(0);
+
+  // Filtra apenas pedidos que estão "Em Rota" (Shipped) mas que ainda não foram assumidos localmente pelo app
   const deliveryQueue = orders.filter(o => o.status === 'shipped');
 
   // SEGURANÇA
   if (!user || !user.isCourier) {
     return <Navigate to="/" />;
   }
+
+  // --- SISTEMA DE NOTIFICAÇÃO SONORA E PUSH ---
+  
+  // 1. Inicializa o Audio e pede permissão
+  useEffect(() => {
+    // Cria o elemento de áudio (Som de notificação curto e alto)
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    
+    // Tenta pedir permissão de notificação logo ao carregar
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        setNotificationsEnabled(true);
+      }
+    }
+    
+    // Seta o tamanho inicial da fila para não apitar no refresh
+    prevQueueLength.current = deliveryQueue.length;
+  }, []);
+
+  // 2. Função para ativar notificações manualmente (necessário para desbloquear áudio no navegador)
+  const enableNotifications = () => {
+    if ("Notification" in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === "granted") {
+          setNotificationsEnabled(true);
+          // Toca um som de teste baixo para desbloquear o AudioContext do navegador
+          if (audioRef.current) {
+            audioRef.current.volume = 0.5;
+            audioRef.current.play().catch(e => console.log("Audio play blocked", e));
+          }
+        }
+      });
+    }
+  };
+
+  // 3. Monitora a fila de entregas
+  useEffect(() => {
+    // Se o número de pedidos na fila aumentou
+    if (deliveryQueue.length > prevQueueLength.current) {
+      triggerNewOrderAlert();
+    }
+    prevQueueLength.current = deliveryQueue.length;
+  }, [deliveryQueue.length]);
+
+  const triggerNewOrderAlert = () => {
+    // A. Toca o Som
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.volume = 1.0;
+      audioRef.current.play().catch(e => console.error("Erro ao tocar som:", e));
+    }
+
+    // B. Vibra o celular (200ms vibra, 100ms pausa, 200ms vibra)
+    if (navigator.vibrate) {
+      navigator.vibrate([500, 200, 500]);
+    }
+
+    // C. Notificação do Sistema (Aparece mesmo fora do navegador)
+    if (Notification.permission === "granted") {
+      new Notification("📦 Nova Entrega Disponível!", {
+        body: "Um novo pedido acabou de entrar na fila. Toque para ver.",
+        icon: "/favicon.ico", // Ícone opcional
+      });
+    }
+  };
+
+  // --- FIM DO SISTEMA DE NOTIFICAÇÃO ---
 
   // Lógica de GPS (Tracker) - Inicia quando há uma ordem ativa
   useEffect(() => {
@@ -37,8 +115,10 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         (position) => {
           const { latitude, longitude, heading, speed } = position.coords;
           
-          // Atualiza no Firebase na coleção 'tracking'
-          // O cliente (TrackingPage) e o Admin vão escutar este documento
+          // 1. Atualiza estado local para o Mapa do Motoboy
+          setCurrentLocation({ lat: latitude, lng: longitude });
+
+          // 2. Atualiza no Firebase para o Cliente/Admin
           const locationRef = doc(db, "tracking", activeOrder.id);
           
           setDoc(locationRef, {
@@ -65,16 +145,73 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
+      setCurrentLocation(null);
     }
 
     return () => {
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [activeOrder?.id]); // Dependência apenas do ID para evitar reinicializações desnecessárias
+  }, [activeOrder?.id]);
 
-  const handleStartDelivery = (order: Order) => {
-    if (window.confirm(`Iniciar rota para ${order.address}? Isso ativará seu GPS.`)) {
+  // Inicialização e Atualização do Mapa do Motoboy
+  useEffect(() => {
+    // Se não tiver ordem ativa, limpa o mapa se existir
+    if (!activeOrder) {
+        if (mapRef.current) {
+            mapRef.current.remove();
+            mapRef.current = null;
+            markerRef.current = null;
+        }
+        return;
+    }
+
+    // Inicializa o mapa se ainda não existir e o elemento DOM estiver pronto
+    if (activeOrder && !mapRef.current && document.getElementById('motoboy-map')) {
+        mapRef.current = L.map('motoboy-map', { zoomControl: false, attributionControl: false }).setView([-24.9555, -53.4552], 15);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(mapRef.current);
+    }
+
+    // Atualiza marcador
+    if (activeOrder && currentLocation && mapRef.current) {
+        const latLng = [currentLocation.lat, currentLocation.lng];
+
+        // Mesmo ícone do cliente para consistência
+        const motoIcon = L.divIcon({
+            html: `<div style="background-color: #ef4444; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 3px solid white;">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+                   </div>`,
+            className: 'custom-div-icon',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+
+        if (markerRef.current) {
+            markerRef.current.setLatLng(latLng);
+        } else {
+            markerRef.current = L.marker(latLng, { icon: motoIcon }).addTo(mapRef.current);
+        }
+
+        mapRef.current.setView(latLng, 17, { animate: true });
+    }
+  }, [activeOrder, currentLocation]);
+
+
+  const handleStartDelivery = async (order: Order) => {
+    if (window.confirm(`Iniciar rota para ${order.address}? Isso registrará o horário de saída.`)) {
         setActiveOrder(order);
+        
+        // Atualiza o horário de saída no Firebase para métricas
+        try {
+            const orderRef = doc(db, "orders", order.id);
+            await updateDoc(orderRef, {
+                shippedAt: new Date().toISOString()
+            });
+        } catch (e) {
+            console.error("Erro ao registrar inicio da rota:", e);
+        }
     }
   };
 
@@ -119,7 +256,6 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     try {
         const orderRef = doc(db, "orders", activeOrder.id);
         
-        // 1. Atualiza Status do Pedido
         await updateDoc(orderRef, {
             status: 'delivered',
             deliveryProof: {
@@ -129,11 +265,8 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             }
         });
 
-        // 2. Limpa dados de rastreamento (Opcional: ou mantém como histórico de rota)
-        // Vamos manter por enquanto, mas parar de atualizar
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
         
-        // 3. Reseta Estado Local
         setActiveOrder(null);
         setShowDeliveryModal(false);
         setPhotoPreview(null);
@@ -160,33 +293,59 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Painel Logístico</p>
             </div>
         </div>
-        <button onClick={logout} className="bg-red-500/20 text-red-400 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
-            <LogOut size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+           {!notificationsEnabled && (
+             <button onClick={enableNotifications} className="bg-blue-500/20 text-blue-400 p-2 rounded-xl hover:bg-blue-500 hover:text-white transition-colors animate-pulse">
+               <BellRing size={20} />
+             </button>
+           )}
+           <button onClick={logout} className="bg-red-500/20 text-red-400 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
+              <LogOut size={20} />
+           </button>
+        </div>
       </div>
+      
+      {/* Botão de Aviso de Som */}
+      {!notificationsEnabled && (
+        <div onClick={enableNotifications} className="bg-blue-600 text-white text-xs font-bold p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors">
+          ⚠️ Toque aqui para ativar o SOM de alerta de novos pedidos
+        </div>
+      )}
 
       <div className="p-4 space-y-6 max-w-lg mx-auto">
         {/* Painel de Rota Ativa */}
         {activeOrder ? (
-             <div className="bg-emerald-600 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden animate-in slide-in-from-top duration-500 ring-4 ring-emerald-500/30">
-                <div className="absolute top-0 right-0 p-4 opacity-20"><Navigation size={120} /></div>
-                
+             <div className="bg-emerald-600 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-top duration-500 ring-4 ring-emerald-500/30">
                 <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-4">
-                        <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center gap-2">
-                            <div className="w-2 h-2 bg-white rounded-full" /> GPS Ativo
-                        </span>
-                        <button onClick={handleCopyTrackingLink} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition-colors" title="Copiar Link de Rastreio">
-                            <Share2 size={18} />
+                    <div className="flex justify-between items-center mb-4">
+                         <div className="flex items-center gap-2">
+                             <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center gap-2">
+                                <div className="w-2 h-2 bg-white rounded-full" /> GPS On
+                            </span>
+                         </div>
+                         <button onClick={handleCopyTrackingLink} className="bg-white text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-emerald-50 transition-colors shadow-sm">
+                            <Share2 size={14} /> Link Cliente
                         </button>
                     </div>
 
-                    <h2 className="text-4xl font-black mt-2 mb-1 leading-none">Em Rota</h2>
-                    <p className="text-emerald-200 text-sm font-bold uppercase tracking-wide mb-6">Pedido #{activeOrder.id}</p>
+                    {/* MAPA DO MOTOBOY */}
+                    <div id="motoboy-map" className="w-full h-56 bg-emerald-800/50 rounded-2xl mb-4 border-2 border-emerald-400/30 shadow-inner relative overflow-hidden z-0">
+                        {!currentLocation && (
+                            <div className="absolute inset-0 flex items-center justify-center text-emerald-100/50">
+                                <Loader2 className="animate-spin mr-2" /> Buscando sinal...
+                            </div>
+                        )}
+                    </div>
+
+                    <h2 className="text-3xl font-black mt-2 mb-1 leading-none">Em Rota</h2>
+                    <p className="text-emerald-200 text-sm font-bold uppercase tracking-wide mb-4">Pedido #{activeOrder.id}</p>
                     
-                    <div className="bg-black/20 rounded-2xl p-4 mb-6 backdrop-blur-sm">
+                    <div className="bg-black/20 rounded-2xl p-4 mb-4 backdrop-blur-sm">
                         <p className="text-emerald-100 text-xs font-black uppercase mb-1">Destino</p>
-                        <p className="text-white font-bold text-xl leading-tight">{activeOrder.address}</p>
+                        <p className="text-white font-bold text-lg leading-tight flex items-start gap-2">
+                            <MapPin className="shrink-0 mt-1" size={16} /> 
+                            {activeOrder.address}
+                        </p>
                     </div>
                     
                     <button 

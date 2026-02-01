@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ChevronRight, 
@@ -34,7 +34,28 @@ const Home = ({
   const flashDeals = PRODUCTS.filter(p => p.originalPrice).slice(0, 4);
   const newArrivals = PRODUCTS.slice(0, 4);
 
-  // Lógica de Rotação por Hora
+  // Estado para o Timer (Começando em 2h 45m 00s = 9900 segundos)
+  const [timeLeft, setTimeLeft] = useState(9900);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 9900)); // Reinicia se chegar a 0 para demo
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedTime = useMemo(() => {
+    const hours = Math.floor(timeLeft / 3600);
+    const minutes = Math.floor((timeLeft % 3600) / 60);
+    const seconds = timeLeft % 60;
+    return {
+      h: hours.toString().padStart(2, '0'),
+      m: minutes.toString().padStart(2, '0'),
+      s: seconds.toString().padStart(2, '0')
+    };
+  }, [timeLeft]);
+
+  // Lógica de Rotação por Hora dos Depoimentos
   const currentTestimonials = useMemo(() => {
     const now = new Date();
     // Cria uma semente baseada no dia e hora (Ex: 2024102514)
@@ -238,7 +259,7 @@ const Home = ({
           </div>
         </section>
 
-        {/* ⚡ Ofertas Relâmpago */}
+        {/* ⚡ Ofertas Relâmpago (COM TIMER FUNCIONAL) */}
         <section className="bg-gradient-to-br from-red-600 to-red-700 rounded-[4rem] p-8 sm:p-16 relative overflow-hidden shadow-[0_40px_80px_-15px_rgba(239,68,68,0.3)]">
           <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
             <Zap className="w-96 h-96 text-white fill-white" />
@@ -246,7 +267,7 @@ const Home = ({
           <div className="relative z-10">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-16 gap-8">
               <div className="flex items-center gap-6">
-                <div className="bg-white p-4 rounded-[1.5rem] shadow-2xl">
+                <div className="bg-white p-4 rounded-[1.5rem] shadow-2xl animate-pulse">
                   <Zap className="h-8 w-8 text-red-600 fill-red-600" />
                 </div>
                 <div>
@@ -256,9 +277,11 @@ const Home = ({
                       <Clock className="h-4 w-4" /> Expira em:
                     </span>
                     <div className="flex gap-2">
-                      <div className="bg-white text-red-600 px-3 py-1 rounded-lg font-black text-lg">02</div>
+                      <div className="bg-white text-red-600 px-3 py-1 rounded-lg font-black text-lg min-w-[3rem] text-center">{formattedTime.h}</div>
                       <span className="text-white font-black text-xl">:</span>
-                      <div className="bg-white text-red-600 px-3 py-1 rounded-lg font-black text-lg">45</div>
+                      <div className="bg-white text-red-600 px-3 py-1 rounded-lg font-black text-lg min-w-[3rem] text-center">{formattedTime.m}</div>
+                      <span className="text-white font-black text-xl">:</span>
+                      <div className="bg-white text-red-600 px-3 py-1 rounded-lg font-black text-lg min-w-[3rem] text-center">{formattedTime.s}</div>
                     </div>
                   </div>
                 </div>
