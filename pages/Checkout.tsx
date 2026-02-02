@@ -121,8 +121,8 @@ const UpsellModal = ({ isOpen, onClose, items, onAdd }: { isOpen: boolean, onClo
 const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, onComplete: (earn: number, spent: number, details: any) => void }) => {
   const [data, setData] = useState<CheckoutData>({
     name: user.name,
-    whatsapp: '',
-    address: '',
+    whatsapp: user.whatsapp || '',
+    address: user.address || '',
     deliveryMethod: 'standard',
     paymentMethod: 'pix',
   });
@@ -234,44 +234,28 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
       }
 
       // 3. Lógica de Distribuição de Desconto (Pontos + Cupom)
-      // O Mercado Pago não aceita itens com valor negativo facilmente, então a estratégia
-      // mais robusta é reduzir o unit_price dos itens até que o desconto total seja aplicado.
-      
       const totalDiscount = couponDiscountValue + pointsValue;
 
       if (totalDiscount > 0) {
         let remainingDiscount = totalDiscount;
 
-        // Iteramos sobre todos os itens para aplicar o desconto onde for possível
         for (let i = 0; i < items.length; i++) {
-            if (remainingDiscount <= 0.01) break; // Desconto aplicado
+            if (remainingDiscount <= 0.01) break; 
 
             const currentItem = items[i];
             const itemTotalValue = currentItem.unit_price * currentItem.quantity;
 
             if (itemTotalValue >= remainingDiscount) {
-                // O item atual cobre todo o desconto restante
-                // Calculamos quanto descontar por unidade
                 const discountPerUnit = remainingDiscount / currentItem.quantity;
-                
-                // Aplicamos o desconto
                 currentItem.unit_price = Number((currentItem.unit_price - discountPerUnit).toFixed(2));
-                
-                // Adicionamos nota na descrição
                 if (currentItem.id !== 'shipping') {
                    currentItem.description = `(Desconto aplicado: R$ ${remainingDiscount.toFixed(2)}) ${currentItem.description}`;
                 }
-
                 remainingDiscount = 0;
             } else {
-                // O desconto é MAIOR que o valor total deste item
-                // Reduzimos o item a 0 (ou removemos, mas MP prefere manter registro)
-                // Vamos deixar o item com valor 0.00 (Gratuito) e levar o restante do desconto para o próximo item
-                
                 const discountUsed = itemTotalValue;
                 currentItem.unit_price = 0;
                 currentItem.description = `(Item 100% abonado por pontos/cupom) ${currentItem.description}`;
-                
                 remainingDiscount -= discountUsed;
             }
         }
@@ -333,12 +317,14 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
 
       const result = await response.json();
       
-      // SALVA O PEDIDO LOCALMENTE ANTES DE REDIRECIONAR
+      // SALVA O PEDIDO LOCALMENTE COM DADOS DO CLIENTE
       onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0, {
         id: result.external_reference,
         total: total,
         address: data.address,
-        paymentMethod: 'mercadopago'
+        paymentMethod: 'mercadopago',
+        customerName: data.name,
+        customerWhatsapp: data.whatsapp
       });
 
       // Redirecionar para o Checkout Pro
@@ -438,7 +424,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                         <span className="font-black text-blue-900">{isFreeShipping ? 'GRÁTIS' : `R$ ${standardShippingPrice.toFixed(2)}`}</span>
                       </div>
                       <p className="text-sm font-black text-blue-900">Padrão Hoje</p>
-                      <p className="text-[10px] text-gray-500 font-medium">Entregamos em qualquer bairro</p>
+                      <p className="text-sm text-gray-500 font-medium">Entregamos em qualquer bairro</p>
                     </button>
 
                     <button 
@@ -451,7 +437,7 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                         <span className="font-black text-blue-900">R$ 25,00</span>
                       </div>
                       <p className="text-sm font-black text-blue-900">Agendado</p>
-                      <p className="text-[10px] text-gray-500 font-medium">Você escolhe o melhor horário</p>
+                      <p className="text-sm text-gray-500 font-medium">Você escolhe o melhor horário</p>
                     </button>
                   </div>
                 </div>

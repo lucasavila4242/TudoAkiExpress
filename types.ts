@@ -50,6 +50,8 @@ export interface CourierLocation {
 export interface Order {
   id: string;
   userId: string;
+  customerName?: string; // Novo campo
+  customerWhatsapp?: string; // Novo campo
   items: CartItem[];
   total: number;
   status: OrderStatus;

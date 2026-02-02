@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2 } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, ArrowRight } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
@@ -20,13 +20,9 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
-  
-  // Referência para controlar o som de notificação
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Referência para rastrear o tamanho anterior da fila e detectar novos pedidos
   const prevQueueLength = useRef<number>(0);
 
-  // Filtra apenas pedidos que estão "Em Rota" (Shipped) mas que ainda não foram assumidos localmente pelo app
   const deliveryQueue = orders.filter(o => o.status === 'shipped');
 
   // SEGURANÇA
@@ -34,31 +30,27 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     return <Navigate to="/" />;
   }
 
-  // --- SISTEMA DE NOTIFICAÇÃO SONORA E PUSH ---
-  
-  // 1. Inicializa o Audio e pede permissão
+  // CONFIGURAÇÃO DE "APP MOBILE"
   useEffect(() => {
-    // Cria o elemento de áudio (Som de notificação curto e alto)
+    // Trava o scroll do body para dar sensação de app nativo
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'auto'; };
+  }, []);
+
+  // --- SISTEMA DE NOTIFICAÇÃO SONORA E PUSH ---
+  useEffect(() => {
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    
-    // Tenta pedir permissão de notificação logo ao carregar
-    if ("Notification" in window) {
-      if (Notification.permission === "granted") {
+    if ("Notification" in window && Notification.permission === "granted") {
         setNotificationsEnabled(true);
-      }
     }
-    
-    // Seta o tamanho inicial da fila para não apitar no refresh
     prevQueueLength.current = deliveryQueue.length;
   }, []);
 
-  // 2. Função para ativar notificações manualmente (necessário para desbloquear áudio no navegador)
   const enableNotifications = () => {
     if ("Notification" in window) {
       Notification.requestPermission().then((permission) => {
         if (permission === "granted") {
           setNotificationsEnabled(true);
-          // Toca um som de teste baixo para desbloquear o AudioContext do navegador
           if (audioRef.current) {
             audioRef.current.volume = 0.5;
             audioRef.current.play().catch(e => console.log("Audio play blocked", e));
@@ -68,9 +60,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     }
   };
 
-  // 3. Monitora a fila de entregas
   useEffect(() => {
-    // Se o número de pedidos na fila aumentou
     if (deliveryQueue.length > prevQueueLength.current) {
       triggerNewOrderAlert();
     }
@@ -78,50 +68,29 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   }, [deliveryQueue.length]);
 
   const triggerNewOrderAlert = () => {
-    // A. Toca o Som
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.volume = 1.0;
       audioRef.current.play().catch(e => console.error("Erro ao tocar som:", e));
     }
-
-    // B. Vibra o celular (200ms vibra, 100ms pausa, 200ms vibra)
-    if (navigator.vibrate) {
-      navigator.vibrate([500, 200, 500]);
-    }
-
-    // C. Notificação do Sistema (Aparece mesmo fora do navegador)
+    if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
     if (Notification.permission === "granted") {
-      new Notification("📦 Nova Entrega Disponível!", {
-        body: "Um novo pedido acabou de entrar na fila. Toque para ver.",
-        icon: "/favicon.ico", // Ícone opcional
-      });
+      new Notification("📦 Nova Entrega!", { body: "Novo pedido na fila." });
     }
   };
 
-  // --- FIM DO SISTEMA DE NOTIFICAÇÃO ---
-
-  // Lógica de GPS (Tracker) - Inicia quando há uma ordem ativa
+  // --- LOGICA DE GPS E MAPA ---
   useEffect(() => {
     if (activeOrder) {
       if (!navigator.geolocation) {
-        alert("Seu navegador não suporta geolocalização. O rastreamento não funcionará.");
+        alert("GPS necessário.");
         return;
       }
-
-      console.log("Iniciando rastreamento GPS para ordem:", activeOrder.id);
-
       const id = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude, heading, speed } = position.coords;
-          
-          // 1. Atualiza estado local para o Mapa do Motoboy
           setCurrentLocation({ lat: latitude, lng: longitude });
-
-          // 2. Atualiza no Firebase para o Cliente/Admin
-          const locationRef = doc(db, "tracking", activeOrder.id);
-          
-          setDoc(locationRef, {
+          setDoc(doc(db, "tracking", activeOrder.id), {
              lat: latitude,
              lng: longitude,
              heading: heading || 0,
@@ -129,72 +98,38 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
              timestamp: Date.now(),
              orderId: activeOrder.id,
              courierName: user.name
-          }, { merge: true }).catch(err => console.error("Erro ao enviar GPS:", err));
+          }, { merge: true }).catch(err => console.error(err));
         },
-        (error) => console.error("Erro GPS:", error),
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
+        (error) => console.error(error),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
       setWatchId(id);
     } else {
-      // Se não tem ordem ativa, para o GPS
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
       setCurrentLocation(null);
     }
-
-    return () => {
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    };
+    return () => { if (watchId !== null) navigator.geolocation.clearWatch(watchId); };
   }, [activeOrder?.id]);
 
-  // Inicialização e Atualização do Mapa do Motoboy
   useEffect(() => {
-    // 1. Limpeza se não houver ordem ativa
     if (!activeOrder) {
-        if (mapRef.current) {
-            mapRef.current.remove();
-            mapRef.current = null;
-            markerRef.current = null;
-        }
+        if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markerRef.current = null; }
         return;
     }
-
     const container = document.getElementById('motoboy-map');
-
-    // 2. Inicializa o mapa (com proteção contra reinicialização)
     if (activeOrder && !mapRef.current && container) {
-        // CORREÇÃO CRÍTICA: Verifica se o Leaflet já marcou este container
-        // Isso previne a tela branca/crash ao sair e voltar da página
         const containerAny = container as any;
-        if (containerAny._leaflet_id) {
-            containerAny._leaflet_id = null; // Reseta o ID do leaflet para permitir nova montagem
-        }
-
+        if (containerAny._leaflet_id) containerAny._leaflet_id = null;
         try {
-          mapRef.current = L.map('motoboy-map', { 
-            zoomControl: false, 
-            attributionControl: false 
-          }).setView([-24.9555, -53.4552], 15);
-          
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-              maxZoom: 20
-          }).addTo(mapRef.current);
-        } catch (e) {
-          console.error("Erro ao iniciar mapa:", e);
-        }
+          mapRef.current = L.map('motoboy-map', { zoomControl: false, attributionControl: false }).setView([-24.9555, -53.4552], 15);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(mapRef.current);
+        } catch (e) { console.error(e); }
     }
-
-    // 3. Atualiza marcador
     if (activeOrder && currentLocation && mapRef.current) {
         const latLng = [currentLocation.lat, currentLocation.lng];
-
-        // Mesmo ícone do cliente para consistência
         const motoIcon = L.divIcon({
             html: `<div style="background-color: #ef4444; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 3px solid white;">
                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
@@ -203,40 +138,21 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             iconSize: [40, 40],
             iconAnchor: [20, 20]
         });
-
-        if (markerRef.current) {
-            markerRef.current.setLatLng(latLng);
-        } else {
-            markerRef.current = L.marker(latLng, { icon: motoIcon }).addTo(mapRef.current);
-        }
-
+        if (markerRef.current) markerRef.current.setLatLng(latLng);
+        else markerRef.current = L.marker(latLng, { icon: motoIcon }).addTo(mapRef.current);
         mapRef.current.setView(latLng, 17, { animate: true });
     }
-
-    // Cleanup function para quando o componente desmontar (sair da tela)
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        markerRef.current = null;
-      }
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markerRef.current = null; }
     };
   }, [activeOrder, currentLocation]);
 
-
   const handleStartDelivery = async (order: Order) => {
-    if (window.confirm(`Iniciar rota para ${order.address}? Isso registrará o horário de saída.`)) {
+    if (window.confirm(`Iniciar rota para ${order.address}?`)) {
         setActiveOrder(order);
-        
-        // Atualiza o horário de saída no Firebase para métricas
         try {
-            const orderRef = doc(db, "orders", order.id);
-            await updateDoc(orderRef, {
-                shippedAt: new Date().toISOString()
-            });
-        } catch (e) {
-            console.error("Erro ao registrar inicio da rota:", e);
-        }
+            await updateDoc(doc(db, "orders", order.id), { shippedAt: new Date().toISOString() });
+        } catch (e) { console.error(e); }
     }
   };
 
@@ -244,7 +160,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
       if(!activeOrder) return;
       const link = `${window.location.origin}/#/track/${activeOrder.id}`;
       navigator.clipboard.writeText(link);
-      alert("Link de rastreio copiado! Compartilhe com o cliente.");
+      alert("Link copiado!");
   }
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,8 +178,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-            setPhotoPreview(compressedBase64);
+            setPhotoPreview(canvas.toDataURL('image/jpeg', 0.7));
         };
       };
       reader.readAsDataURL(file);
@@ -271,240 +186,201 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   };
 
   const finalizeDelivery = async () => {
-    if (!activeOrder || !photoPreview || !recipientName) {
-        alert("Preencha o nome e tire a foto para comprovar.");
-        return;
-    }
-
+    if (!activeOrder || !photoPreview || !recipientName) { alert("Preencha todos os dados."); return; }
     setIsSubmitting(true);
-
     try {
-        const orderRef = doc(db, "orders", activeOrder.id);
-        
-        await updateDoc(orderRef, {
+        await updateDoc(doc(db, "orders", activeOrder.id), {
             status: 'delivered',
-            deliveryProof: {
-                recipientName,
-                photo: photoPreview,
-                timestamp: new Date().toISOString()
-            }
+            deliveryProof: { recipientName, photo: photoPreview, timestamp: new Date().toISOString() }
         });
-
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-        
         setActiveOrder(null);
         setShowDeliveryModal(false);
         setPhotoPreview(null);
         setRecipientName('');
-        alert("Entrega Finalizada com Sucesso! 🚀");
-    } catch (e) {
-        console.error("Erro ao finalizar:", e);
-        alert("Erro ao salvar. Tente novamente.");
-    } finally {
-        setIsSubmitting(false);
-    }
+        alert("Entrega Finalizada!");
+    } catch (e) { console.error(e); alert("Erro ao salvar."); } 
+    finally { setIsSubmitting(false); }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white pb-20 font-sans">
-      {/* Header Fixo */}
-      <div className="bg-slate-800 p-6 shadow-lg flex justify-between items-center sticky top-0 z-50 border-b border-slate-700">
+    // ESTRUTURA FLEX COLUMN 100dvh PARA SIMULAR APP
+    <div className="flex flex-col h-[100dvh] bg-slate-900 text-white font-sans overflow-hidden app-select-none">
+      
+      {/* HEADER FIXO DE APP */}
+      <div className="bg-slate-800 p-4 shadow-md flex justify-between items-center z-20 border-b border-slate-700 shrink-0">
         <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-full animate-pulse">
-                <Bike className="text-white" size={24} />
+            <div className="bg-emerald-500 p-1.5 rounded-full">
+                <Bike className="text-white h-5 w-5" />
             </div>
             <div>
-                <h1 className="font-black text-xl leading-none">TudoAki Moto</h1>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Painel Logístico</p>
+                <h1 className="font-black text-lg leading-none">TudoAki App</h1>
+                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/> Online
+                </p>
             </div>
         </div>
         <div className="flex items-center gap-2">
            {!notificationsEnabled && (
-             <button onClick={enableNotifications} className="bg-blue-500/20 text-blue-400 p-2 rounded-xl hover:bg-blue-500 hover:text-white transition-colors animate-pulse">
-               <BellRing size={20} />
+             <button onClick={enableNotifications} className="bg-blue-500/20 text-blue-400 p-2 rounded-xl active:scale-95 transition-transform">
+               <BellRing size={18} />
              </button>
            )}
-           <button onClick={logout} className="bg-red-500/20 text-red-400 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
-              <LogOut size={20} />
+           <button onClick={logout} className="bg-red-500/20 text-red-400 p-2 rounded-xl active:scale-95 transition-transform">
+              <LogOut size={18} />
            </button>
         </div>
       </div>
-      
-      {/* Botão de Aviso de Som */}
-      {!notificationsEnabled && (
-        <div onClick={enableNotifications} className="bg-blue-600 text-white text-xs font-bold p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors">
-          ⚠️ Toque aqui para ativar o SOM de alerta de novos pedidos
-        </div>
-      )}
 
-      <div className="p-4 space-y-6 max-w-lg mx-auto">
-        {/* Painel de Rota Ativa */}
+      {/* ÁREA DE CONTEÚDO COM SCROLL INDEPENDENTE */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-900 pb-24">
+        
+        {/* Aviso de Som */}
+        {!notificationsEnabled && (
+            <div onClick={enableNotifications} className="bg-blue-600/90 backdrop-blur text-white text-xs font-bold p-3 rounded-xl text-center active:bg-blue-700 mb-4 animate-bounce">
+            🔊 Toque aqui para ativar alertas sonoros
+            </div>
+        )}
+
+        {/* CARD DE ROTA ATIVA */}
         {activeOrder ? (
-             <div className="bg-emerald-600 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-top duration-500 ring-4 ring-emerald-500/30">
-                <div className="relative z-10">
-                    <div className="flex justify-between items-center mb-6">
-                         <div className="flex items-center gap-2">
-                             <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center gap-2">
-                                <div className="w-2 h-2 bg-white rounded-full" /> GPS On
-                            </span>
-                         </div>
-                         <button onClick={handleCopyTrackingLink} className="bg-white text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-emerald-50 transition-colors shadow-sm">
-                            <Share2 size={14} /> Link Cliente
-                        </button>
-                    </div>
+             <div className="bg-emerald-600 rounded-[2rem] p-5 shadow-2xl relative overflow-hidden ring-4 ring-emerald-500/20 animate-in fade-in slide-in-from-top">
+                <div className="flex justify-between items-center mb-4">
+                     <div className="flex items-center gap-2">
+                         <span className="bg-black/20 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" /> GPS ATIVO
+                        </span>
+                     </div>
+                     <button onClick={handleCopyTrackingLink} className="bg-white/90 text-emerald-800 text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95">
+                        <Share2 size={12} /> Link
+                    </button>
+                </div>
 
-                    {/* MAPA DO MOTOBOY (Maior e com bordas corrigidas) */}
-                    <div id="motoboy-map" className="w-full h-80 bg-emerald-800/50 rounded-[2rem] mb-6 border-4 border-emerald-500/30 shadow-inner relative overflow-hidden z-0">
-                        {!currentLocation && (
-                            <div className="absolute inset-0 flex items-center justify-center text-emerald-100/50">
-                                <Loader2 className="animate-spin mr-2" /> Buscando sinal...
-                            </div>
-                        )}
-                    </div>
+                {/* MAPA */}
+                <div className="w-full aspect-square bg-emerald-800/50 rounded-3xl mb-4 border-2 border-emerald-400/30 relative overflow-hidden shadow-inner">
+                    <div id="motoboy-map" className="absolute inset-0 z-0"></div>
+                    {!currentLocation && <div className="absolute inset-0 flex items-center justify-center text-emerald-100/50 z-10"><Loader2 className="animate-spin mr-2" /> GPS...</div>}
+                </div>
 
-                    <h2 className="text-3xl font-black mt-2 mb-1 leading-none">Em Rota</h2>
-                    <p className="text-emerald-200 text-sm font-bold uppercase tracking-wide mb-4">Pedido #{activeOrder.id}</p>
-                    
-                    <div className="bg-black/20 rounded-2xl p-4 mb-4 backdrop-blur-sm">
-                        <p className="text-emerald-100 text-xs font-black uppercase mb-1">Destino</p>
-                        <p className="text-white font-bold text-lg leading-tight flex items-start gap-2">
-                            <MapPin className="shrink-0 mt-1" size={16} /> 
-                            {activeOrder.address}
-                        </p>
-                    </div>
-                    
+                <h2 className="text-2xl font-black leading-none mb-1">Em Rota</h2>
+                <div className="bg-black/20 rounded-xl p-3 mb-4">
+                    <p className="text-emerald-100 text-[10px] font-black uppercase mb-0.5">Destino</p>
+                    <p className="text-white font-bold text-base leading-tight flex items-start gap-1.5">
+                        <MapPin className="shrink-0 mt-0.5 text-white" size={14} /> 
+                        {activeOrder.address}
+                    </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <button 
+                         onClick={() => { if(window.confirm("Cancelar rota?")) setActiveOrder(null); }}
+                         className="bg-emerald-800/50 text-emerald-200 py-3 rounded-xl font-bold text-xs uppercase"
+                    >
+                        Cancelar
+                    </button>
                     <button 
                         onClick={() => setShowDeliveryModal(true)}
-                        className="w-full bg-white text-emerald-700 py-4 rounded-xl font-black text-lg shadow-lg flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        className="bg-white text-emerald-700 py-3 rounded-xl font-black text-sm uppercase shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform"
                     >
-                        <CheckCircle2 size={24} /> FINALIZAR ENTREGA
-                    </button>
-                    
-                    <button 
-                         onClick={() => {
-                            if(window.confirm("Cancelar rota atual? O GPS será desligado.")) {
-                                setActiveOrder(null);
-                            }
-                         }}
-                         className="w-full mt-4 text-emerald-200 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
-                    >
-                        Cancelar / Ocorrência
+                        <CheckCircle2 size={16} /> Entregar
                     </button>
                 </div>
              </div>
         ) : (
-            <div className="bg-slate-800 rounded-[2rem] p-8 text-center border border-slate-700 shadow-xl">
-                <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
-                    <Navigation size={32} />
+            <div className="bg-slate-800/50 rounded-[2rem] p-6 text-center border-2 border-dashed border-slate-700">
+                <div className="w-14 h-14 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-500">
+                    <Navigation size={28} />
                 </div>
-                <h2 className="text-xl font-black text-slate-200">Aguardando Rotas</h2>
-                <p className="text-slate-400 text-sm mt-2 max-w-xs mx-auto">Selecione um pedido da fila abaixo para iniciar o GPS e a entrega.</p>
+                <h2 className="text-lg font-black text-slate-300">Sem Rota Ativa</h2>
+                <p className="text-slate-500 text-xs mt-1">Escolha um pedido abaixo para começar.</p>
             </div>
         )}
 
-        {/* Fila de Pedidos */}
-        <div className="space-y-4 pt-4">
-            <div className="flex items-center justify-between px-2">
-                <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest">Fila de Entrega ({deliveryQueue.length})</h3>
-                <span className="text-[10px] font-bold bg-blue-500/20 text-blue-400 px-2 py-1 rounded">Cascavel</span>
+        {/* LISTA DE PEDIDOS */}
+        <div>
+            <div className="flex items-center justify-between px-1 mb-3">
+                <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest">Disponíveis ({deliveryQueue.length})</h3>
+                <Clock size={14} className="text-slate-600" />
             </div>
             
-            {deliveryQueue.length === 0 ? (
-                <div className="text-center py-12 opacity-30 border-2 border-dashed border-slate-700 rounded-3xl">
-                    <Bike size={48} className="mx-auto mb-4" />
-                    <p className="font-bold">Nenhuma entrega disponível.</p>
-                </div>
-            ) : (
-                deliveryQueue.map(order => (
-                    <div key={order.id} className={`bg-white text-slate-900 p-6 rounded-[2rem] shadow-lg border-l-8 transition-all ${activeOrder?.id === order.id ? 'border-emerald-500 opacity-50 pointer-events-none scale-95 grayscale' : 'border-blue-500 hover:scale-[1.02]'}`}>
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-black tracking-wide text-slate-600">#{order.id}</span>
-                            <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                                <Clock size={12} />
-                                {new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
-                        </div>
-                        
-                        <div className="flex items-start gap-3 mb-5">
-                            <MapPin className="text-red-500 shrink-0 mt-1 fill-red-100" size={20} />
-                            <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase">Entregar em</p>
-                                <p className="font-black text-xl leading-tight text-slate-800">{order.address}</p>
+            <div className="space-y-3 pb-safe">
+                {deliveryQueue.length === 0 ? (
+                    <div className="text-center py-8 opacity-30">
+                        <Bike size={32} className="mx-auto mb-2" />
+                        <p className="text-sm font-bold">Tudo entregue!</p>
+                    </div>
+                ) : (
+                    deliveryQueue.map(order => (
+                        <div key={order.id} className={`bg-white text-slate-900 p-5 rounded-[1.5rem] shadow-sm active:scale-[0.98] transition-transform ${activeOrder ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-black">#{order.id.slice(-6)}</span>
+                                <span className="text-[10px] font-bold text-slate-400">{new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 mb-5 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <div className="bg-white p-2 rounded-lg shadow-sm"><UserIcon size={16} className="text-slate-400" /></div>
-                            <div>
-                                <p className="text-[10px] font-black uppercase text-slate-400">Detalhes</p>
-                                <span className="text-sm font-bold text-slate-700">{order.items.length} volumes • {order.paymentMethod.toUpperCase()}</span>
+                            
+                            <div className="flex gap-3 mb-4">
+                                <MapPin className="text-red-500 shrink-0 mt-0.5" size={18} />
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Destino</p>
+                                    <p className="font-bold text-base leading-tight text-slate-800">{order.address}</p>
+                                </div>
                             </div>
-                        </div>
-                        
-                        {!activeOrder && (
+                            
                             <button 
                                 onClick={() => handleStartDelivery(order)}
-                                className="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-wide hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
+                                className="w-full bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
                             >
-                                <Navigation size={20} /> INICIAR ROTA
+                                <Navigation size={16} /> Navegar
                             </button>
-                        )}
-                    </div>
-                ))
-            )}
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
       </div>
 
-      {/* Modal de Finalização (Full Screen Mobile) */}
+      {/* MODAL DE FINALIZAÇÃO (FULLSCREEN MOBILE) */}
       {showDeliveryModal && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white text-slate-900 w-full sm:max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 animate-in slide-in-from-bottom duration-300 max-h-[90vh] overflow-y-auto">
-                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-                <h2 className="text-2xl font-black text-blue-900 mb-1">Confirmar Entrega</h2>
-                <p className="text-sm text-gray-500 mb-8 font-medium">Preencha os dados para liberar o pedido.</p>
-                
-                <div className="space-y-6">
-                    <div>
-                        <label className="block text-xs font-black uppercase text-gray-400 mb-2 ml-1">Quem recebeu?</label>
-                        <input 
-                            value={recipientName}
-                            onChange={(e) => setRecipientName(e.target.value)}
-                            className="w-full bg-gray-100 border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-2xl p-4 font-bold text-lg outline-none transition-all placeholder:font-medium"
-                            placeholder="Nome do recebedor"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-black uppercase text-gray-400 mb-2 ml-1">Foto do Local / Pacote</label>
-                        <label className={`block w-full aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group ${photoPreview ? 'border-emerald-500 bg-white' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
-                            {photoPreview ? (
-                                <img src={photoPreview} className="absolute inset-0 w-full h-full object-cover" />
-                            ) : (
-                                <div className="text-center p-4">
-                                    <div className="bg-white p-3 rounded-full shadow-sm inline-block mb-2 group-hover:scale-110 transition-transform"><Camera size={24} className="text-blue-500" /></div>
-                                    <p className="text-xs font-bold text-gray-500">Toque para abrir a câmera</p>
-                                </div>
-                            )}
-                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
-                        </label>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                        <button 
-                            onClick={() => setShowDeliveryModal(false)}
-                            className="flex-1 py-4 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
-                        >
-                            Voltar
-                        </button>
-                        <button 
-                            onClick={finalizeDelivery}
-                            disabled={isSubmitting || !photoPreview || !recipientName}
-                            className="flex-1 py-4 rounded-xl font-black text-white bg-emerald-500 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all active:scale-95"
-                        >
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : 'FINALIZAR'}
-                        </button>
-                    </div>
+        <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col animate-in slide-in-from-bottom duration-300">
+            <div className="p-4 flex justify-between items-center border-b border-slate-800">
+                <h2 className="text-lg font-black text-white">Finalizar Entrega</h2>
+                <button onClick={() => setShowDeliveryModal(false)} className="p-2 bg-slate-800 rounded-full"><ArrowRight className="rotate-90" /></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div>
+                    <label className="text-xs font-black uppercase text-slate-400 ml-1">Recebedor</label>
+                    <input 
+                        value={recipientName}
+                        onChange={(e) => setRecipientName(e.target.value)}
+                        className="w-full bg-slate-800 text-white border-none rounded-2xl p-4 font-bold text-lg mt-2 focus:ring-2 focus:ring-emerald-500 placeholder:text-slate-600"
+                        placeholder="Nome de quem recebeu"
+                    />
                 </div>
+
+                <div>
+                    <label className="text-xs font-black uppercase text-slate-400 ml-1">Comprovante</label>
+                    <label className={`block w-full aspect-video rounded-2xl border-2 border-dashed mt-2 flex flex-col items-center justify-center relative overflow-hidden ${photoPreview ? 'border-emerald-500' : 'border-slate-700 bg-slate-800'}`}>
+                        {photoPreview ? (
+                            <img src={photoPreview} className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                            <div className="text-center">
+                                <Camera size={32} className="mx-auto mb-2 text-slate-500" />
+                                <p className="text-xs font-bold text-slate-500">Tirar Foto</p>
+                            </div>
+                        )}
+                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
+                    </label>
+                </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-800 bg-slate-900">
+                <button 
+                    onClick={finalizeDelivery}
+                    disabled={isSubmitting || !photoPreview || !recipientName}
+                    className="w-full py-4 rounded-xl font-black text-white bg-emerald-500 shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                >
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : 'CONFIRMAR ENTREGA'}
+                </button>
             </div>
         </div>
       )}

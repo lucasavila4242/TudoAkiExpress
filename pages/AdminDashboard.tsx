@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { 
   User as UserIcon, 
   ShoppingBag, 
@@ -22,7 +22,8 @@ import {
   Navigation,
   Eye,
   Image as ImageIcon,
-  Timer
+  Timer,
+  Smartphone
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
@@ -45,6 +46,30 @@ const AdminDashboard = ({
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'all'>('all');
   const [proofModal, setProofModal] = useState<Order | null>(null);
+
+  // Sound Refs
+  const notificationAudio = useRef<HTMLAudioElement | null>(null);
+  const prevOrdersLength = useRef<number>(0);
+
+  // Inicializa Som
+  useEffect(() => {
+    notificationAudio.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    prevOrdersLength.current = orders.length;
+  }, []);
+
+  // Monitora novos pedidos para tocar som
+  useEffect(() => {
+    if (orders.length > prevOrdersLength.current) {
+        // Toca som se houver novos pedidos
+        if (notificationAudio.current) {
+            notificationAudio.current.currentTime = 0;
+            notificationAudio.current.volume = 1.0;
+            notificationAudio.current.play().catch(e => console.log("Audio auto-play prevented"));
+        }
+    }
+    prevOrdersLength.current = orders.length;
+  }, [orders]);
+
 
   // Carrega Usuários
   useEffect(() => {
@@ -76,7 +101,8 @@ const AdminDashboard = ({
     if (searchQuery) {
       result = result.filter(order => 
         (order.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (order.address || '').toLowerCase().includes(searchQuery.toLowerCase())
+        (order.address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (order.customerName || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (filterStatus !== 'all') {
@@ -134,6 +160,22 @@ const AdminDashboard = ({
     const link = `${window.location.origin}/#/track/${orderId}`;
     navigator.clipboard.writeText(link);
     alert("Link de rastreamento copiado! Envie para o cliente.");
+  };
+
+  const handleNotifyCustomer = (order: Order) => {
+    if (!order.customerWhatsapp) {
+        alert("Cliente não cadastrou WhatsApp.");
+        return;
+    }
+
+    const cleanPhone = order.customerWhatsapp.replace(/\D/g, '');
+    const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    const name = order.customerName ? order.customerName.split(' ')[0] : 'Cliente';
+    
+    const message = `Olá *${name}*, aqui é da TudoAkiExpress! 👋\n\nRecebemos seu pedido *#${order.id}* com sucesso!\n\n✅ *Status:* Em Separação\n📦 *Itens:* ${order.items.length} volumes\n🛵 *Previsão:* Logo sairá para entrega!\n\nSeus dados de entrega estão corretos?\n📍 _${order.address}_`;
+    
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
   };
 
   const wrapperClass = isLogisticsMode ? "min-h-screen py-10 px-4 bg-slate-900 text-slate-100" : "min-h-screen py-10 px-4 bg-gray-50 text-gray-900";
@@ -203,14 +245,14 @@ const AdminDashboard = ({
             <div className="flex flex-col">
               {/* Busca */}
               <div className={`p-4 border-b flex items-center gap-4 ${isLogisticsMode ? 'border-slate-700' : 'border-gray-50'}`}>
-                <div className="relative w-full max-w-md"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className={`h-4 w-4 ${isLogisticsMode ? 'text-slate-500' : 'text-gray-400'}`} /></div><input type="text" className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${isLogisticsMode ? 'bg-slate-900 border-slate-700 text-white focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-blue-500'}`} placeholder="Buscar por protocolo, endereço..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+                <div className="relative w-full max-w-md"><div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className={`h-4 w-4 ${isLogisticsMode ? 'text-slate-500' : 'text-gray-400'}`} /></div><input type="text" className={`block w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all ${isLogisticsMode ? 'bg-slate-900 border-slate-700 text-white focus:ring-emerald-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-blue-500'}`} placeholder="Buscar por protocolo, nome, endereço..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
               </div>
               
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
                     <tr className={`text-[10px] font-black uppercase tracking-widest ${isLogisticsMode ? 'bg-slate-900/50 text-slate-400' : 'bg-gray-50 text-gray-400'}`}>
-                      <th className="px-6 py-4">Pedido / Pagamento</th>
+                      <th className="px-6 py-4">Pedido / Cliente</th>
                       <th className="px-6 py-4">Itens</th>
                       <th className="px-6 py-4">Status & Logística</th>
                       <th className="px-6 py-4 text-center">Ação</th>
@@ -226,6 +268,14 @@ const AdminDashboard = ({
                              {/* Coluna 1 - Igual */}
                             <div className="flex flex-col gap-2">
                               <span className={`text-xs font-black px-2 py-1 rounded-lg w-fit ${isLogisticsMode ? 'bg-slate-700 text-white' : 'bg-blue-100 text-blue-900'}`}>{order.id}</span>
+                              
+                              {order.customerName && (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <UserIcon size={12} className={isLogisticsMode ? 'text-slate-400' : 'text-gray-400'} />
+                                    <span className={`text-xs font-bold ${isLogisticsMode ? 'text-slate-200' : 'text-gray-700'}`}>{order.customerName}</span>
+                                </div>
+                              )}
+
                               <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg w-fit border ${isMercadoPago ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : (isLogisticsMode ? 'bg-slate-900 text-slate-400 border-slate-700' : 'bg-gray-100 text-gray-500 border-gray-200')}`}>{isMercadoPago ? <CreditCard size={12} /> : <Banknote size={12} />}<span className="text-[10px] font-black uppercase">{isMercadoPago ? 'MERCADO PAGO' : (order.paymentMethod || 'PIX').toUpperCase()}</span></div>
                               <div className="flex items-start gap-1.5 mt-1"><MapPin size={14} className="text-red-500 shrink-0 mt-0.5" /><div><p className={`text-[11px] font-bold leading-tight ${isLogisticsMode ? 'text-slate-300' : 'text-gray-700'}`}>{order.address}</p><p className={`text-[10px] ${isLogisticsMode ? 'text-slate-500' : 'text-gray-400'}`}>{new Date(order.timestamp).toLocaleString('pt-BR')}</p></div></div>
                             </div>
@@ -263,20 +313,32 @@ const AdminDashboard = ({
                             </div>
                           </td>
                           <td className="px-6 py-6 text-center align-middle">
-                            {action ? (
-                              <button onClick={() => handleUpdateStatus(order.id, action.next)} className={`${action.color} ${action.textColor} w-full py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 hover:brightness-110`}>
-                                <action.icon size={16} /> {action.label}
-                              </button>
-                            ) : order.status === 'shipped' ? (
-                                <div className="text-center opacity-50">
-                                    <p className="text-[10px] font-bold text-gray-400">AGUARDANDO MOTOBOY</p>
-                                    <p className="text-[9px] text-gray-300">Finalização via App</p>
+                            <div className="space-y-2">
+                                {action ? (
+                                <button onClick={() => handleUpdateStatus(order.id, action.next)} className={`${action.color} ${action.textColor} w-full py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 hover:brightness-110`}>
+                                    <action.icon size={16} /> {action.label}
+                                </button>
+                                ) : order.status === 'shipped' ? (
+                                    <div className="text-center opacity-50">
+                                        <p className="text-[10px] font-bold text-gray-400">AGUARDANDO MOTOBOY</p>
+                                        <p className="text-[9px] text-gray-300">Finalização via App</p>
+                                    </div>
+                                ) : (
+                                <div className="flex flex-col items-center gap-1 text-green-600 opacity-60">
+                                    <CheckCircle2 size={24} /> <span className="text-[10px] font-black uppercase">Concluído</span>
                                 </div>
-                            ) : (
-                              <div className="flex flex-col items-center gap-1 text-green-600 opacity-60">
-                                <CheckCircle2 size={24} /> <span className="text-[10px] font-black uppercase">Concluído</span>
-                              </div>
-                            )}
+                                )}
+
+                                {/* Botão de WhatsApp */}
+                                {order.customerWhatsapp && order.status !== 'delivered' && (
+                                    <button 
+                                        onClick={() => handleNotifyCustomer(order)}
+                                        className={`w-full py-2 rounded-xl text-[10px] font-black uppercase border border-green-200 bg-green-50 text-green-600 flex items-center justify-center gap-2 hover:bg-green-100 transition-colors ${isLogisticsMode ? 'bg-green-900/20 border-green-800 text-green-400' : ''}`}
+                                    >
+                                        <Smartphone size={14} /> Contatar
+                                    </button>
+                                )}
+                            </div>
                           </td>
                         </tr>
                       );

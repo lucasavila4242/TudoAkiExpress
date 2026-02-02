@@ -441,8 +441,31 @@ export default function App() {
 
   const onOrderComplete = async (pointsEarned: number, pointsSpent: number, orderDetails: any) => {
     if (!user) return;
-    const newOrderData = { userId: user.id, items: [...cart], total: orderDetails.total, status: 'pending', timestamp: new Date().toISOString(), address: orderDetails.address, paymentMethod: orderDetails.paymentMethod };
-    try { await addDoc(collection(db, "orders"), newOrderData); } catch (e) { console.error("Erro save order:", e); }
+    
+    // Agora capturamos o nome e whatsapp do objeto orderDetails (vindo do Checkout.tsx)
+    const newOrderData: Order = { 
+        id: orderDetails.id || `ORD-${Date.now()}`,
+        userId: user.id, 
+        items: [...cart], 
+        total: orderDetails.total, 
+        status: 'pending', 
+        timestamp: new Date().toISOString(), 
+        address: orderDetails.address, 
+        paymentMethod: orderDetails.paymentMethod,
+        // Novos campos:
+        customerName: orderDetails.customerName || user.name,
+        customerWhatsapp: orderDetails.customerWhatsapp || user.whatsapp
+    };
+
+    try { 
+        // Se já tiver ID (do Mercado Pago), usa setDoc para garantir o ID personalizado, senão addDoc
+        if (orderDetails.id) {
+            await setDoc(doc(db, "orders", orderDetails.id), newOrderData);
+        } else {
+            await addDoc(collection(db, "orders"), newOrderData); 
+        }
+    } catch (e) { console.error("Erro save order:", e); }
+    
     updateDB({ points: user.points - pointsSpent + pointsEarned, lifetimePoints: user.lifetimePoints + pointsEarned, persistedCart: [], lastCartUpdate: undefined }, `Finalizou um pedido`, 'order');
     setCart([]);
   };
