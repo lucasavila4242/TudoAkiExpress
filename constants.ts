@@ -10,6 +10,15 @@ export const COLORS = {
 // ADICIONE SEU NÚMERO AQUI (DDD + NÚMERO, apenas dígitos)
 export const STORE_PHONE = '5545999999999'; 
 
+// --- CONFIGURAÇÃO DE NOTIFICAÇÃO AUTOMÁTICA (TELEGRAM) ---
+// TOKEN: A identidade do seu robô (Já configurado)
+export const TELEGRAM_BOT_TOKEN = '8453416683:AAGLZBfkFTGhNoyfcAmPnLDHEGTw5mlGZzU'; 
+
+// CHAT ID: O seu "endereço" pessoal no Telegram.
+// IMPORTANTE: Mande uma mensagem para o usuário @userinfobot no Telegram.
+// Ele vai te responder com um número (Id). Coloque esse número abaixo:
+export const TELEGRAM_CHAT_ID = 'SEU_ID_NUMERICO_AQUI'; // Ex: 123456789
+
 export interface Testimonial {
   id: number;
   name: string;
@@ -106,11 +115,11 @@ export const PRODUCTS: Product[] = [
   {
     id: 'test-checkout-01',
     name: 'Produto de Teste - Validação',
-    description: 'Este produto é destinado a testes de funcionalidade da plataforma. Ao adquiri-lo, você ajuda a validar o fluxo de pagamento e entrega.\n\nO valor é simbólico (R$ 2,00) e o frete será ajustado automaticamente para R$ 0,01 no checkout.',
-    price: 2.00,
+    description: 'Este produto é destinado a testes de funcionalidade da plataforma. Ao adquiri-lo, você ajuda a validar o fluxo de pagamento e entrega.\n\nO valor é simbólico (R$ 1,00) e o frete será ajustado automaticamente para R$ 0,01 no checkout.',
+    price: 1.00,
     originalPrice: 5.00,
-    image: 'https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$2',
-    images: ['https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$2'],
+    image: 'https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$1',
+    images: ['https://placehold.co/600x600/EF4444/FFFFFF/png?text=TESTE+R$1'],
     category: 'Testes',
     rating: 5.0,
     reviewsCount: 999,

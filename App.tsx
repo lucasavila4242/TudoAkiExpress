@@ -32,6 +32,7 @@ import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
 import { db } from './firebase'; 
 import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion, setDoc } from 'firebase/firestore';
+import { sendOrderNotification } from './services/notification'; // Serviço Atualizado (Telegram)
 
 // Pages
 import Home from './pages/Home';
@@ -458,12 +459,16 @@ export default function App() {
     };
 
     try { 
-        // Se já tiver ID (do Mercado Pago), usa setDoc para garantir o ID personalizado, senão addDoc
+        // 1. Salva no Firebase
         if (orderDetails.id) {
             await setDoc(doc(db, "orders", orderDetails.id), newOrderData);
         } else {
             await addDoc(collection(db, "orders"), newOrderData); 
         }
+
+        // 2. DISPARA NOTIFICAÇÃO AUTOMÁTICA EM BACKGROUND (TELEGRAM)
+        sendOrderNotification(newOrderData);
+
     } catch (e) { console.error("Erro save order:", e); }
     
     updateDB({ points: user.points - pointsSpent + pointsEarned, lifetimePoints: user.lifetimePoints + pointsEarned, persistedCart: [], lastCartUpdate: undefined }, `Finalizou um pedido`, 'order');

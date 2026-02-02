@@ -2,11 +2,10 @@
 {
   "name": "TudoAki Motoboy",
   "short_name": "TudoAki Moto",
-  "start_url": ".",
-  "scope": "/",
+  "start_url": "/#/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#1e293b",
+  "theme_color": "#1e293b",
   "orientation": "portrait",
   "icons": [
     {

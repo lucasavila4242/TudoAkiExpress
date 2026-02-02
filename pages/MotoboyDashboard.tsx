@@ -22,56 +22,12 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [wakeLock, setWakeLock] = useState<any>(null);
 
-  // --- ESTADO PARA PEDIDOS DE TESTE ---
-  const [testOrders, setTestOrders] = useState<Order[]>([]);
-
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevQueueLength = useRef<number>(0);
 
-  // Combina pedidos reais com pedidos de teste
-  const deliveryQueue = [...orders, ...testOrders].filter(o => o.status === 'shipped');
-
-  // --- SIMULAÇÃO DE PEDIDOS (5 MINUTOS) ---
-  useEffect(() => {
-    // Cria 2 pedidos falsos
-    const fakeOrders: Order[] = [
-      {
-        id: 'TESTE-01-CENTRO',
-        userId: 'teste',
-        items: [],
-        total: 50.00,
-        status: 'shipped',
-        timestamp: new Date().toISOString(),
-        address: 'Av. Brasil, 1500 - Centro (Simulação)',
-        paymentMethod: 'pix',
-        customerName: 'Cliente Teste 1'
-      },
-      {
-        id: 'TESTE-02-NEVA',
-        userId: 'teste',
-        items: [],
-        total: 89.90,
-        status: 'shipped',
-        timestamp: new Date().toISOString(),
-        address: 'Rua Paraná, 3000 - Neva (Simulação)',
-        paymentMethod: 'card',
-        customerName: 'Cliente Teste 2'
-      }
-    ];
-
-    setTestOrders(fakeOrders);
-    triggerNewOrderAlert(); // Toca o som para testar
-
-    // Remove após 5 minutos (300.000 ms)
-    const timer = setTimeout(() => {
-        setTestOrders([]);
-        alert("Tempo de teste esgotado: Os pedidos simulados foram removidos.");
-    }, 5 * 60 * 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
+  const deliveryQueue = orders.filter(o => o.status === 'shipped');
 
   // SEGURANÇA
   if (!user || !user.isCourier) {
@@ -167,18 +123,16 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
           const { latitude, longitude, heading, speed } = position.coords;
           setCurrentLocation({ lat: latitude, lng: longitude });
           
-          // Só salva no Firebase se NÃO for teste
-          if (!activeOrder.id.startsWith('TESTE-')) {
-              setDoc(doc(db, "tracking", activeOrder.id), {
-                 lat: latitude,
-                 lng: longitude,
-                 heading: heading || 0,
-                 speed: speed || 0,
-                 timestamp: Date.now(),
-                 orderId: activeOrder.id,
-                 courierName: user.name
-              }, { merge: true }).catch(err => console.error(err));
-          }
+          // Salva no Firebase para o Admin ver
+          setDoc(doc(db, "tracking", activeOrder.id), {
+             lat: latitude,
+             lng: longitude,
+             heading: heading || 0,
+             speed: speed || 0,
+             timestamp: Date.now(),
+             orderId: activeOrder.id,
+             courierName: user.name
+          }, { merge: true }).catch(err => console.error(err));
         },
         (error) => console.error("Erro GPS:", error),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -236,12 +190,9 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const handleStartDelivery = async (order: Order) => {
     if (window.confirm(`Iniciar rota para ${order.address}?`)) {
         setActiveOrder(order);
-        // Só atualiza firebase se não for teste
-        if (!order.id.startsWith('TESTE-')) {
-            try {
-                await updateDoc(doc(db, "orders", order.id), { shippedAt: new Date().toISOString() });
-            } catch (e) { console.error(e); }
-        }
+        try {
+            await updateDoc(doc(db, "orders", order.id), { shippedAt: new Date().toISOString() });
+        } catch (e) { console.error(e); }
     }
   };
 
@@ -285,20 +236,6 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
   const finalizeDelivery = async () => {
     if (!activeOrder || !photoPreview || !recipientName) { alert("Preencha todos os dados."); return; }
-    
-    // Se for teste, apenas limpa
-    if (activeOrder.id.startsWith('TESTE-')) {
-        alert("Simulação de entrega finalizada com sucesso!");
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-        setTestOrders(prev => prev.filter(p => p.id !== activeOrder.id));
-        setActiveOrder(null);
-        setShowDeliveryModal(false);
-        setPhotoPreview(null);
-        setRecipientName('');
-        releaseWakeLock();
-        return;
-    }
-
     setIsSubmitting(true);
     try {
         await updateDoc(doc(db, "orders", activeOrder.id), {
@@ -437,7 +374,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                     deliveryQueue.map(order => (
                         <div key={order.id} className={`bg-white text-slate-900 p-5 rounded-[1.5rem] shadow-sm active:scale-[0.98] transition-transform ${activeOrder ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
                             <div className="flex justify-between items-start mb-2">
-                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-black">#{order.id.slice(0, 8)}</span>
+                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[10px] font-black">#{order.id.slice(-6)}</span>
                                 <span className="text-[10px] font-bold text-slate-400">{new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             </div>
                             

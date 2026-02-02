@@ -24,7 +24,9 @@ import {
   X,
   PartyPopper,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  ExternalLink,
+  Smartphone
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus } from '../types';
 import { PRODUCTS, STORE_PHONE } from '../constants';
@@ -76,13 +78,6 @@ const OrderStatusStepper = ({ status }: { status: OrderStatus }) => {
 const PaymentSuccessModal = ({ isOpen, onClose, lastOrder }: { isOpen: boolean, onClose: () => void, lastOrder?: Order }) => {
   if (!isOpen) return null;
 
-  const handleNotifyWhatsapp = () => {
-    if (!lastOrder) return;
-    const message = `🔔 *COMPROVANTE DE PAGAMENTO*\n\nOlá, acabei de realizar o pagamento!\n\n🆔 *Pedido:* ${lastOrder.id}\n💰 *Valor:* R$ ${lastOrder.total.toFixed(2)}\n📍 *Endereço:* ${lastOrder.address}\n\nPodem confirmar para liberar a entrega?`;
-    const url = `https://wa.me/${STORE_PHONE}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-blue-900/80 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
@@ -92,18 +87,14 @@ const PaymentSuccessModal = ({ isOpen, onClose, lastOrder }: { isOpen: boolean, 
           <div className="absolute inset-0 rounded-full border-4 border-green-50 animate-ping opacity-25" />
         </div>
         <h2 className="text-2xl font-black text-blue-900 mb-2">Pedido Recebido!</h2>
-        <p className="text-gray-500 text-sm mb-6">Para agilizar sua entrega, envie o comprovante ou avise nossa equipe agora.</p>
+        <p className="text-gray-500 text-sm mb-6">Seu pedido já está em nosso sistema e a notificação foi enviada automaticamente para a loja.</p>
         
-        <button 
-          onClick={handleNotifyWhatsapp}
-          className="w-full bg-green-500 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-green-600 transition-all flex items-center justify-center gap-2 mb-3 animate-pulse-subtle"
-        >
-          <MessageCircle size={20} />
-          AVISAR LOJA NO WHATSAPP
-        </button>
+        <div className="bg-blue-50 p-4 rounded-2xl mb-6">
+            <p className="text-xs font-bold text-blue-800">Relaxa! Já estamos preparando tudo. 🚀</p>
+        </div>
 
-        <button onClick={onClose} className="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-blue-900">
-          Acompanhar pelo site
+        <button onClick={onClose} className="w-full bg-blue-900 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-blue-800 transition-all flex items-center justify-center gap-2">
+          ACOMPANHAR ENTREGA
         </button>
       </div>
     </div>
@@ -439,6 +430,7 @@ const Account = ({
                           </div>
                         ))}
                       </div>
+
                     </div>
                   </div>
                 ))}
