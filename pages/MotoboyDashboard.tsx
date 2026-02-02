@@ -2,11 +2,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, ArrowRight } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, ArrowRight, Zap, BatteryCharging, MoreVertical } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
 declare const L: any; // Leaflet Global
+
+// URL do site público para compartilhamento
+const PUBLIC_URL = window.location.origin;
 
 const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders: Order[], logout: () => void }) => {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
@@ -17,6 +20,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const [watchId, setWatchId] = useState<number | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [wakeLock, setWakeLock] = useState<any>(null);
 
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -30,16 +34,39 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     return <Navigate to="/" />;
   }
 
-  // CONFIGURAÇÃO DE "APP MOBILE"
+  // CONFIGURAÇÃO DE "APP WEB"
   useEffect(() => {
-    // Trava o scroll do body para dar sensação de app nativo
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = 'auto'; };
   }, []);
 
-  // --- SISTEMA DE NOTIFICAÇÃO SONORA E PUSH ---
+  // --- WAKE LOCK (MANTER TELA LIGADA NO NAVEGADOR) ---
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+        try {
+            const lock = await (navigator as any).wakeLock.request('screen');
+            setWakeLock(lock);
+            console.log("Tela mantida ligada (WakeLock ativo)");
+        } catch (err) {
+            console.error("Erro WakeLock (pode ser ignorado em segundo plano):", err);
+        }
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLock) {
+        try {
+            await wakeLock.release();
+            setWakeLock(null);
+        } catch (e) { console.error(e); }
+    }
+  };
+
+  // --- SISTEMA DE NOTIFICAÇÃO SONORA ---
   useEffect(() => {
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    
+    // Tenta ativar notificações do navegador
     if ("Notification" in window && Notification.permission === "granted") {
         setNotificationsEnabled(true);
     }
@@ -51,9 +78,10 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
       Notification.requestPermission().then((permission) => {
         if (permission === "granted") {
           setNotificationsEnabled(true);
+          // Toca um som mudo para desbloquear o áudio do navegador
           if (audioRef.current) {
             audioRef.current.volume = 0.5;
-            audioRef.current.play().catch(e => console.log("Audio play blocked", e));
+            audioRef.current.play().catch(() => {});
           }
         }
       });
@@ -82,14 +110,20 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   // --- LOGICA DE GPS E MAPA ---
   useEffect(() => {
     if (activeOrder) {
+      // 1. Ativa WakeLock para a tela não desligar durante a rota
+      requestWakeLock();
+
       if (!navigator.geolocation) {
-        alert("GPS necessário.");
+        alert("GPS necessário. Ative a localização.");
         return;
       }
+      
       const id = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude, heading, speed } = position.coords;
           setCurrentLocation({ lat: latitude, lng: longitude });
+          
+          // Salva no Firebase para o Admin ver
           setDoc(doc(db, "tracking", activeOrder.id), {
              lat: latitude,
              lng: longitude,
@@ -100,20 +134,26 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
              courierName: user.name
           }, { merge: true }).catch(err => console.error(err));
         },
-        (error) => console.error(error),
+        (error) => console.error("Erro GPS:", error),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
       setWatchId(id);
     } else {
+      // 2. Desativa GPS e WakeLock ao finalizar
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
       }
       setCurrentLocation(null);
+      releaseWakeLock();
     }
-    return () => { if (watchId !== null) navigator.geolocation.clearWatch(watchId); };
+    return () => { 
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        releaseWakeLock();
+    };
   }, [activeOrder?.id]);
 
+  // Renderização do Mapa Leaflet
   useEffect(() => {
     if (!activeOrder) {
         if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markerRef.current = null; }
@@ -158,9 +198,18 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
   const handleCopyTrackingLink = () => {
       if(!activeOrder) return;
-      const link = `${window.location.origin}/#/track/${activeOrder.id}`;
-      navigator.clipboard.writeText(link);
-      alert("Link copiado!");
+      const link = `${PUBLIC_URL}/#/track/${activeOrder.id}`;
+      
+      if (navigator.share) {
+        navigator.share({
+            title: 'Acompanhe sua entrega',
+            text: 'Seu pedido TudoAki saiu para entrega! Acompanhe em tempo real:',
+            url: link,
+        }).catch(console.error);
+      } else {
+        navigator.clipboard.writeText(link);
+        alert("Link copiado! " + link);
+      }
   }
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,16 +247,16 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         setShowDeliveryModal(false);
         setPhotoPreview(null);
         setRecipientName('');
+        releaseWakeLock();
         alert("Entrega Finalizada!");
     } catch (e) { console.error(e); alert("Erro ao salvar."); } 
     finally { setIsSubmitting(false); }
   };
 
   return (
-    // ESTRUTURA FLEX COLUMN 100dvh PARA SIMULAR APP
     <div className="flex flex-col h-[100dvh] bg-slate-900 text-white font-sans overflow-hidden app-select-none">
       
-      {/* HEADER FIXO DE APP */}
+      {/* HEADER */}
       <div className="bg-slate-800 p-4 shadow-md flex justify-between items-center z-20 border-b border-slate-700 shrink-0">
         <div className="flex items-center gap-3">
             <div className="bg-emerald-500 p-1.5 rounded-full">
@@ -216,7 +265,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             <div>
                 <h1 className="font-black text-lg leading-none">TudoAki App</h1>
                 <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/> Online
+                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/> Web App
                 </p>
             </div>
         </div>
@@ -232,14 +281,21 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         </div>
       </div>
 
-      {/* ÁREA DE CONTEÚDO COM SCROLL INDEPENDENTE */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-900 pb-24">
         
-        {/* Aviso de Som */}
-        {!notificationsEnabled && (
-            <div onClick={enableNotifications} className="bg-blue-600/90 backdrop-blur text-white text-xs font-bold p-3 rounded-xl text-center active:bg-blue-700 mb-4 animate-bounce">
-            🔊 Toque aqui para ativar alertas sonoros
-            </div>
+        {/* Aviso de Instalação (Só aparece se não for PWA Standalone) */}
+        {!window.matchMedia('(display-mode: standalone)').matches && (
+             <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 rounded-2xl shadow-lg border border-blue-400/30">
+                <div className="flex items-start gap-3">
+                    <div className="bg-white/20 p-2 rounded-lg"><MoreVertical className="text-white" size={20} /></div>
+                    <div>
+                        <h3 className="font-black text-white text-sm">Instalar Aplicativo</h3>
+                        <p className="text-xs text-blue-100 mt-1">
+                            Para a melhor experiência, toque nos 3 pontinhos do navegador e selecione <b>"Adicionar à Tela Inicial"</b>.
+                        </p>
+                    </div>
+                </div>
+             </div>
         )}
 
         {/* CARD DE ROTA ATIVA */}
@@ -248,8 +304,13 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                 <div className="flex justify-between items-center mb-4">
                      <div className="flex items-center gap-2">
                          <span className="bg-black/20 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" /> GPS ATIVO
+                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" /> GPS WEB
                         </span>
+                        {wakeLock && (
+                            <span className="bg-yellow-400/20 text-yellow-200 px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1">
+                                <Zap size={10} className="fill-yellow-200" /> TELA ON
+                            </span>
+                        )}
                      </div>
                      <button onClick={handleCopyTrackingLink} className="bg-white/90 text-emerald-800 text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95">
                         <Share2 size={12} /> Link
@@ -259,7 +320,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                 {/* MAPA */}
                 <div className="w-full aspect-square bg-emerald-800/50 rounded-3xl mb-4 border-2 border-emerald-400/30 relative overflow-hidden shadow-inner">
                     <div id="motoboy-map" className="absolute inset-0 z-0"></div>
-                    {!currentLocation && <div className="absolute inset-0 flex items-center justify-center text-emerald-100/50 z-10"><Loader2 className="animate-spin mr-2" /> GPS...</div>}
+                    {!currentLocation && <div className="absolute inset-0 flex items-center justify-center text-emerald-100/50 z-10"><Loader2 className="animate-spin mr-2" /> Localizando...</div>}
                 </div>
 
                 <h2 className="text-2xl font-black leading-none mb-1">Em Rota</h2>
@@ -273,7 +334,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                 
                 <div className="grid grid-cols-2 gap-3">
                     <button 
-                         onClick={() => { if(window.confirm("Cancelar rota?")) setActiveOrder(null); }}
+                         onClick={() => { if(window.confirm("Cancelar rota?")) { setActiveOrder(null); releaseWakeLock(); } }}
                          className="bg-emerald-800/50 text-emerald-200 py-3 rounded-xl font-bold text-xs uppercase"
                     >
                         Cancelar
@@ -292,7 +353,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                     <Navigation size={28} />
                 </div>
                 <h2 className="text-lg font-black text-slate-300">Sem Rota Ativa</h2>
-                <p className="text-slate-500 text-xs mt-1">Escolha um pedido abaixo para começar.</p>
+                <p className="text-slate-500 text-xs mt-1">Aguardando novos pedidos...</p>
             </div>
         )}
 
@@ -338,7 +399,6 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         </div>
       </div>
 
-      {/* MODAL DE FINALIZAÇÃO (FULLSCREEN MOBILE) */}
       {showDeliveryModal && (
         <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col animate-in slide-in-from-bottom duration-300">
             <div className="p-4 flex justify-between items-center border-b border-slate-800">
