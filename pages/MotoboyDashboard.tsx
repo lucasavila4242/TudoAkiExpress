@@ -155,7 +155,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
   // Inicialização e Atualização do Mapa do Motoboy
   useEffect(() => {
-    // Se não tiver ordem ativa, limpa o mapa se existir
+    // 1. Limpeza se não houver ordem ativa
     if (!activeOrder) {
         if (mapRef.current) {
             mapRef.current.remove();
@@ -165,16 +165,32 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         return;
     }
 
-    // Inicializa o mapa se ainda não existir e o elemento DOM estiver pronto
-    if (activeOrder && !mapRef.current && document.getElementById('motoboy-map')) {
-        mapRef.current = L.map('motoboy-map', { zoomControl: false, attributionControl: false }).setView([-24.9555, -53.4552], 15);
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20
-        }).addTo(mapRef.current);
+    const container = document.getElementById('motoboy-map');
+
+    // 2. Inicializa o mapa (com proteção contra reinicialização)
+    if (activeOrder && !mapRef.current && container) {
+        // CORREÇÃO CRÍTICA: Verifica se o Leaflet já marcou este container
+        // Isso previne a tela branca/crash ao sair e voltar da página
+        const containerAny = container as any;
+        if (containerAny._leaflet_id) {
+            containerAny._leaflet_id = null; // Reseta o ID do leaflet para permitir nova montagem
+        }
+
+        try {
+          mapRef.current = L.map('motoboy-map', { 
+            zoomControl: false, 
+            attributionControl: false 
+          }).setView([-24.9555, -53.4552], 15);
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+              maxZoom: 20
+          }).addTo(mapRef.current);
+        } catch (e) {
+          console.error("Erro ao iniciar mapa:", e);
+        }
     }
 
-    // Atualiza marcador
+    // 3. Atualiza marcador
     if (activeOrder && currentLocation && mapRef.current) {
         const latLng = [currentLocation.lat, currentLocation.lng];
 
@@ -196,6 +212,15 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
         mapRef.current.setView(latLng, 17, { animate: true });
     }
+
+    // Cleanup function para quando o componente desmontar (sair da tela)
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
   }, [activeOrder, currentLocation]);
 
 
@@ -317,7 +342,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         {activeOrder ? (
              <div className="bg-emerald-600 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-top duration-500 ring-4 ring-emerald-500/30">
                 <div className="relative z-10">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-6">
                          <div className="flex items-center gap-2">
                              <span className="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse flex items-center gap-2">
                                 <div className="w-2 h-2 bg-white rounded-full" /> GPS On
@@ -328,8 +353,8 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                         </button>
                     </div>
 
-                    {/* MAPA DO MOTOBOY */}
-                    <div id="motoboy-map" className="w-full h-56 bg-emerald-800/50 rounded-2xl mb-4 border-2 border-emerald-400/30 shadow-inner relative overflow-hidden z-0">
+                    {/* MAPA DO MOTOBOY (Maior e com bordas corrigidas) */}
+                    <div id="motoboy-map" className="w-full h-80 bg-emerald-800/50 rounded-[2rem] mb-6 border-4 border-emerald-500/30 shadow-inner relative overflow-hidden z-0">
                         {!currentLocation && (
                             <div className="absolute inset-0 flex items-center justify-center text-emerald-100/50">
                                 <Loader2 className="animate-spin mr-2" /> Buscando sinal...
