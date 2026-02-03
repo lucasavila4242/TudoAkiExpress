@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, RefreshCw, XCircle, Play } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, RefreshCw, XCircle, Play, Maximize2, X } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
@@ -18,9 +18,10 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   
-  // Estados de Notificação
+  // Estados de Notificação e Zoom
   const [isSoundEnabled, setIsSoundEnabled] = useState(false);
   const [isRinging, setIsRinging] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -354,6 +355,20 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         </div>
       )}
 
+      {/* MODAL DE ZOOM DA FOTO */}
+      {isZoomed && photoPreview && (
+        <div className="fixed inset-0 z-[300] bg-black flex items-center justify-center p-2 animate-in fade-in duration-200" onClick={() => setIsZoomed(false)}>
+            <button className="absolute top-4 right-4 text-white p-3 bg-gray-800/50 rounded-full backdrop-blur-sm z-50 hover:bg-red-500 transition-colors">
+                <X size={24} />
+            </button>
+            <img 
+                src={photoPreview} 
+                className="max-w-full max-h-full object-contain rounded-lg" 
+                onClick={(e) => e.stopPropagation()} // Evita fechar ao clicar na imagem
+            />
+        </div>
+      )}
+
       {/* Header Fixo */}
       <div className="bg-slate-800 p-6 shadow-lg flex justify-between items-center sticky top-0 z-50 border-b border-slate-700">
         <div className="flex items-center gap-3">
@@ -545,17 +560,36 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
                     <div>
                         <label className="block text-xs font-black uppercase text-gray-400 mb-2 ml-1">Foto do Local / Pacote</label>
-                        <label className={`block w-full aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group ${photoPreview ? 'border-emerald-500 bg-white' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
-                            {photoPreview ? (
-                                <img src={photoPreview} className="absolute inset-0 w-full h-full object-cover" />
-                            ) : (
+                        
+                        {photoPreview ? (
+                            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                                <div 
+                                    className="relative w-full aspect-video rounded-2xl overflow-hidden border-4 border-emerald-500 group cursor-pointer shadow-lg" 
+                                    onClick={() => setIsZoomed(true)}
+                                >
+                                    <img src={photoPreview} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Maximize2 className="text-white w-8 h-8 drop-shadow-lg" />
+                                    </div>
+                                    <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 backdrop-blur-sm">
+                                         <Maximize2 size={10} /> Ampliar
+                                    </div>
+                                </div>
+                                
+                                <label className="flex items-center justify-center gap-2 w-full p-4 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs uppercase tracking-wide cursor-pointer hover:bg-slate-200 transition-colors border border-slate-200">
+                                    <Camera size={16} /> Tirar Outra Foto
+                                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
+                                </label>
+                            </div>
+                        ) : (
+                            <label className="block w-full aspect-video rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 flex flex-col items-center justify-center cursor-pointer transition-all relative overflow-hidden group">
                                 <div className="text-center p-4">
                                     <div className="bg-white p-3 rounded-full shadow-sm inline-block mb-2 group-hover:scale-110 transition-transform"><Camera size={24} className="text-blue-500" /></div>
                                     <p className="text-xs font-bold text-gray-500">Toque para abrir a câmera</p>
                                 </div>
-                            )}
-                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
-                        </label>
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
+                            </label>
+                        )}
                     </div>
 
                     <div className="flex gap-3 pt-4">

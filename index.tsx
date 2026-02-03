@@ -3,8 +3,9 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { RefreshCw, AlertTriangle, Trash2 } from 'lucide-react';
 
+// Fixed: Made children optional to resolve missing property error in JSX usage
 interface ErrorBoundaryProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -14,10 +15,8 @@ interface ErrorBoundaryState {
 
 // Error Boundary para capturar telas brancas (crashes)
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  // Fixed: Explicitly declared state property to resolve "Property 'state' does not exist" error
+  public state: ErrorBoundaryState = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: any): ErrorBoundaryState {
     return { hasError: true, error };
