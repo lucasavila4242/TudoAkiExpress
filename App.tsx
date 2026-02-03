@@ -483,36 +483,32 @@ export default function App() {
     setCart([]);
   };
 
-  // Função ROBUSTA para atualizar status, lidando com IDs antigos e novos
+  // Função BLINDADA para atualizar status, lidando com IDs antigos e erros de documento
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
-        // Tentativa 1: Atualização Direta (Funciona para pedidos novos onde DocID == OrderID)
+        // Tentativa 1: Atualização Direta (Assume ID novo: DocID == OrderID)
         const orderRef = doc(db, "orders", orderId);
         await updateDoc(orderRef, { status: newStatus });
     } catch (e: any) { 
-        // Se falhar com "No document to update", significa que é um pedido antigo
-        // onde o ID do documento é diferente do ID interno (ORD-xxx).
-        if (e.code === 'not-found' || e.message.includes('No document to update')) {
-            console.warn(`Tentando recuperação para pedido legado: ${orderId}`);
-            try {
-                // Busca o documento pelo campo interno 'id'
-                const q = query(collection(db, "orders"), where("id", "==", orderId));
-                const querySnapshot = await getDocs(q);
-                
-                if (!querySnapshot.empty) {
-                    const actualDocRef = querySnapshot.docs[0].ref;
-                    await updateDoc(actualDocRef, { status: newStatus });
-                    console.log("Recuperação bem sucedida.");
-                } else {
-                    console.error("Pedido realmente não encontrado.");
-                }
-            } catch (retryErr) {
-                console.error("Falha na recuperação:", retryErr);
-                throw retryErr;
+        // Se falhar (ex: documento não existe com esse ID), tenta buscar pelo campo 'id' interno
+        // Isso resolve o problema dos pedidos antigos com IDs gerados aleatoriamente
+        console.warn(`Update direto falhou para ${orderId}. Tentando recuperação por query...`, e);
+        
+        try {
+            const q = query(collection(db, "orders"), where("id", "==", orderId));
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const actualDocRef = querySnapshot.docs[0].ref;
+                await updateDoc(actualDocRef, { status: newStatus });
+                console.log(`Status do pedido ${orderId} recuperado e atualizado com sucesso.`);
+            } else {
+                console.error(`Pedido ${orderId} realmente não existe no banco.`);
+                throw e; // Relança o erro original se não achar de jeito nenhum
             }
-        } else {
-            console.error("Erro update status:", e); 
-            throw e; 
+        } catch (retryErr) {
+            console.error("Erro fatal ao atualizar status:", retryErr);
+            throw retryErr;
         }
     }
   };
