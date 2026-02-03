@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
@@ -92,11 +91,30 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     }
 
     // C. Notificação do Sistema (Aparece mesmo fora do navegador)
-    if (Notification.permission === "granted") {
-      new Notification("📦 Nova Entrega Disponível!", {
-        body: "Um novo pedido acabou de entrar na fila. Toque para ver.",
-        icon: "/favicon.ico", // Ícone opcional
-      });
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        // Tenta criar notificação padrão (Desktop/iOS)
+        const options: any = {
+            body: "Um novo pedido acabou de entrar na fila. Toque para ver.",
+            icon: "/favicon.ico", 
+            vibrate: [500, 200, 500]
+        };
+        new Notification("📦 Nova Entrega Disponível!", options);
+      } catch (e) {
+        // Fallback para PWA Android (Chrome) que exige ServiceWorker e bloqueia new Notification()
+        console.warn("Erro ao criar notificação nativa, tentando via SW:", e);
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistration().then(reg => {
+                if (reg) {
+                    reg.showNotification("📦 Nova Entrega Disponível!", {
+                        body: "Um novo pedido acabou de entrar na fila. Toque para ver.",
+                        icon: "/favicon.ico",
+                        vibrate: [500, 200, 500]
+                    } as any);
+                }
+            }).catch(err => console.error("Erro ao notificar via SW:", err));
+        }
+      }
     }
   };
 
