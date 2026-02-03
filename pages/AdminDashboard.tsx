@@ -153,9 +153,9 @@ const AdminDashboard = ({
     }
   };
 
-  const handleNotifyCustomer = (order: Order, statusContext?: OrderStatus) => {
+  const handleNotifyCustomer = (order: Order) => {
     if (!order.customerWhatsapp) {
-        alert("⚠️ Este pedido não tem WhatsApp cadastrado (pedido antigo ou incompleto).");
+        alert("⚠️ Este pedido não tem WhatsApp cadastrado.");
         return;
     }
 
@@ -163,36 +163,26 @@ const AdminDashboard = ({
     const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     const name = order.customerName ? order.customerName.split(' ')[0] : 'Cliente';
     
-    let message = '';
-    
-    switch (statusContext) {
-        case 'processing':
-            message = `Olá *${name}*! 👋\n\nRecebemos seu pedido *#${order.id}* na TudoAkiExpress!\n\n📦 Já iniciamos a *SEPARAÇÃO* dos seus produtos.\n\nFique atento(a), logo ele sai para entrega! 🚀`;
-            break;
-        case 'shipped':
-            message = `🛵 *SAIU PARA ENTREGA!*\n\nOlá *${name}*, nosso entregador já está a caminho com seu pedido *#${order.id}*.\n\n📍 Você pode acompanhar a localização em tempo real aqui:\n${window.location.origin}/#/track/${order.id}`;
-            break;
-        case 'delivered':
-             message = `✅ *ENTREGA REALIZADA!*\n\nObrigado por comprar na TudoAkiExpress, *${name}*.\n\nSeu pedido *#${order.id}* foi entregue com sucesso. Esperamos que goste! ⭐`;
-             break;
-        default:
-            message = `Olá *${name}*, aqui é da TudoAkiExpress! 👋\n\nRecebemos seu pedido *#${order.id}*.\n\nQualquer dúvida, estamos à disposição!`;
-    }
+    // Mensagem genérica para contato manual
+    const message = `Olá *${name}*, aqui é da TudoAkiExpress! 👋\n\nEstamos entrando em contato sobre seu pedido *#${order.id}*.\n\nPodemos ajudar em algo?`;
     
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
 
+  // Função simplificada e direta - Apenas atualiza o banco de dados
   const handleUpdateStatus = async (order: Order, nextStatus: OrderStatus) => {
     const actionName = nextStatus === 'processing' ? 'Iniciar Separação' : nextStatus === 'shipped' ? 'Enviar para Entrega' : 'Finalizar';
 
+    // Confirmação simples para evitar cliques acidentais
     if (!window.confirm(`Confirma ${actionName} para o pedido #${order.id}?`)) {
       return;
     }
 
     setUpdatingOrderId(order.id);
     try {
-      // 1. Atualiza Status APENAS (Sem notificação automática)
+      // Atualiza o banco de dados (Firebase)
+      // O App.tsx propaga essa mudança para todos (Admin e Cliente) automaticamente
       await updateOrderStatus(order.id, nextStatus);
       
     } catch (error) {
@@ -366,7 +356,7 @@ const AdminDashboard = ({
                                 </div>
                                 )}
 
-                                {/* Botão de WhatsApp */}
+                                {/* Botão de Contato Manual */}
                                 {order.customerWhatsapp && order.status !== 'delivered' && (
                                     <button 
                                         onClick={() => handleNotifyCustomer(order)}

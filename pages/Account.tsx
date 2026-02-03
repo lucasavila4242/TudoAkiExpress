@@ -24,7 +24,8 @@ import {
   X,
   PartyPopper,
   Loader2,
-  MessageCircle
+  MessageCircle,
+  Bell
 } from 'lucide-react';
 import { User, Product, Order, OrderStatus } from '../types';
 import { PRODUCTS, STORE_PHONE } from '../constants';
@@ -73,47 +74,33 @@ const OrderStatusStepper = ({ status }: { status: OrderStatus }) => {
   );
 };
 
-const PaymentSuccessModal = ({ isOpen, onClose, lastOrder }: { isOpen: boolean, onClose: () => void, lastOrder?: Order }) => {
-  if (!isOpen) return null;
+// Componente de Notificação TOAST
+const StatusNotification = ({ message, type, onClose }: { message: string, type: 'info' | 'success', onClose: () => void }) => {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 5000); // Fecha após 5s
+        return () => clearTimeout(timer);
+    }, [onClose]);
 
-  const handleNotifyWhatsapp = () => {
-    if (!lastOrder) return;
-    const message = `🔔 *COMPROVANTE DE PAGAMENTO*\n\nOlá, acabei de realizar o pagamento!\n\n🆔 *Pedido:* ${lastOrder.id}\n💰 *Valor:* R$ ${lastOrder.total.toFixed(2)}\n📍 *Endereço:* ${lastOrder.address}\n\nPodem confirmar para liberar a entrega?`;
-    const url = `https://wa.me/${STORE_PHONE}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-blue-900/80 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
-      <div className="relative bg-white w-full max-w-sm rounded-[3rem] p-8 text-center shadow-2xl animate-in zoom-in-95 border-4 border-white">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-          <PartyPopper className="h-10 w-10 text-green-600 animate-bounce" />
-          <div className="absolute inset-0 rounded-full border-4 border-green-50 animate-ping opacity-25" />
+    return (
+        <div className="fixed top-24 right-4 z-[999] max-w-sm w-full animate-in slide-in-from-right duration-500 cursor-pointer" onClick={onClose}>
+            <div className={`p-5 rounded-2xl shadow-2xl border-2 flex items-center gap-4 ${type === 'success' ? 'bg-white border-green-500' : 'bg-white border-blue-500'}`}>
+                <div className={`p-3 rounded-full ${type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                    {type === 'success' ? <CheckCircle2 size={24} /> : <Bell size={24} className="animate-pulse" />}
+                </div>
+                <div className="flex-1">
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${type === 'success' ? 'text-green-600' : 'text-blue-600'}`}>Atualização de Status</p>
+                    <p className="text-sm font-bold text-gray-800">{message}</p>
+                </div>
+                <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-gray-300 hover:text-gray-500"><X size={16}/></button>
+            </div>
         </div>
-        <h2 className="text-2xl font-black text-blue-900 mb-2">Pedido Recebido!</h2>
-        <p className="text-gray-500 text-sm mb-6">Para agilizar sua entrega, envie o comprovante ou avise nossa equipe agora.</p>
-        
-        <button 
-          onClick={handleNotifyWhatsapp}
-          className="w-full bg-green-500 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-green-600 transition-all flex items-center justify-center gap-2 mb-3 animate-pulse-subtle"
-        >
-          <MessageCircle size={20} />
-          AVISAR LOJA NO WHATSAPP
-        </button>
-
-        <button onClick={onClose} className="text-xs font-bold text-gray-400 uppercase tracking-widest hover:text-blue-900">
-          Acompanhar pelo site
-        </button>
-      </div>
-    </div>
-  );
+    );
 };
 
 const Account = ({ 
   user, 
   wishlist, 
-  orders, // Agora recebemos orders diretamente do Firebase via App.tsx
+  orders, 
   toggleWishlist, 
   addToCart,
   onOpenAuth,
@@ -128,30 +115,39 @@ const Account = ({
   updateOrderStatus: (id: string, s: OrderStatus) => void
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders'>('profile');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [notification, setNotification] = useState<{message: string, type: 'info' | 'success'} | null>(null);
   const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   
   const prevOrdersRef = useRef<Order[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Detecta mudança de status (Pending -> Processing) para exibir modal de sucesso
-  // Isso acontece automaticamente pois 'orders' vem do Firebase e muda em tempo real
+  // Monitora mudanças de status em TEMPO REAL para notificar o cliente
   useEffect(() => {
     if (orders.length > 0 && prevOrdersRef.current.length > 0) {
       orders.forEach(curr => {
         const prev = prevOrdersRef.current.find(p => p.id === curr.id);
-        if (prev && prev.status === 'pending' && curr.status === 'processing') {
-          setShowSuccessModal(true);
-          setActiveTab('orders');
-          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        if (prev && prev.status !== curr.status) {
+            
+            // Lógica de Notificação
+            if (curr.status === 'processing') {
+                setNotification({ message: `📦 Seu pedido #${curr.id} entrou em separação!`, type: 'info' });
+                setActiveTab('orders'); // Leva o usuário para a aba de pedidos
+            } else if (curr.status === 'shipped') {
+                setNotification({ message: `🚀 Saiu para entrega! Acompanhe o pedido #${curr.id}.`, type: 'success' });
+                setActiveTab('orders');
+            } else if (curr.status === 'delivered') {
+                setNotification({ message: `✅ Pedido #${curr.id} entregue! Obrigado pela preferência.`, type: 'success' });
+            }
+
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         }
       });
     }
     prevOrdersRef.current = orders;
   }, [orders]);
 
-  // Handler de retorno do Mercado Pago
+  // Handler de retorno do Mercado Pago (Pagamento Aprovado)
   useEffect(() => {
     const getParam = (key: string) => {
       const hashParams = new URLSearchParams(location.search);
@@ -174,11 +170,9 @@ const Account = ({
         const latestOrder = pendingOrders[0];
         
         setTimeout(() => {
-          // Atualiza status no Firebase
-          updateOrderStatus(latestOrder.id, 'processing');
+          // Atualiza status no Firebase para "Em Processamento" automaticamente
+          updateOrderStatus(latestOrder.id, 'processing'); // Mudança de status acionará a notificação acima
           setIsVerifyingPayment(false);
-          setShowSuccessModal(true);
-          setActiveTab('orders');
           navigate('/account', { replace: true });
         }, 1500);
       } else {
@@ -196,9 +190,6 @@ const Account = ({
   const wishlistedProducts = useMemo(() => 
     PRODUCTS.filter(p => wishlist.includes(p.id)), 
   [wishlist]);
-
-  // Pega o último pedido para o modal de WhatsApp
-  const lastOrderForModal = orders.length > 0 ? orders[0] : undefined;
 
   if (!user) {
     return (
@@ -235,8 +226,9 @@ const Account = ({
   const progress = (user.lifetimePoints / currentTier.next) * 100;
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-20 pt-10 px-4 sm:px-6 lg:px-8">
-      <PaymentSuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} lastOrder={lastOrderForModal} />
+    <div className="bg-gray-50 min-h-screen pb-20 pt-10 px-4 sm:px-6 lg:px-8 relative">
+      {/* Componente de Notificação */}
+      {notification && <StatusNotification message={notification.message} type={notification.type} onClose={() => setNotification(null)} />}
       
       <div className="max-w-5xl mx-auto space-y-8">
         
@@ -408,7 +400,21 @@ const Account = ({
                     </div>
 
                     <div className="p-8">
+                      {/* BARRA DE PROGRESSO DO STATUS */}
                       <OrderStatusStepper status={order.status} />
+
+                      {/* AVISO DE STATUS ATUAL (Destaque) */}
+                      <div className="mt-8 mb-8 text-center bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                        {order.status === 'pending' && <p className="text-blue-900 font-bold">Aguardando confirmação do pagamento...</p>}
+                        {order.status === 'processing' && <p className="text-emerald-600 font-black text-lg animate-pulse">📦 Estamos separando seu pedido agora mesmo!</p>}
+                        {order.status === 'shipped' && (
+                            <div>
+                                <p className="text-blue-900 font-black text-lg">🚀 Saiu para entrega!</p>
+                                <Link to={`/track/${order.id}`} className="inline-block mt-2 text-xs font-bold uppercase tracking-widest text-red-500 underline">Acompanhar no Mapa</Link>
+                            </div>
+                        )}
+                        {order.status === 'delivered' && <p className="text-green-600 font-black text-lg">✅ Entregue com sucesso!</p>}
+                      </div>
 
                       <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-gray-50">
                         <div className="space-y-4">
