@@ -7,26 +7,6 @@ export const COLORS = {
   accent: '#F59E0B', // Amber-500
 };
 
-// ADICIONE SEU NÚMERO AQUI (DDD + NÚMERO, apenas dígitos)
-export const STORE_PHONE = '5545999999999'; 
-
-// --- CONFIGURAÇÃO DE NOTIFICAÇÃO AUTOMÁTICA (TELEGRAM) ---
-// TOKEN: A identidade do seu robô (Já configurado)
-export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN as string; 
-
-// CHAT ID: O seu "endereço" pessoal no Telegram.
-// IMPORTANTE: Mande uma mensagem para o usuário @userinfobot no Telegram.
-// Ele vai te responder com um número (Id). Coloque esse número abaixo:
-export const TELEGRAM_CHAT_ID = 'SEU_ID_NUMERICO_AQUI'; // Ex: 123456789
-
-export interface Testimonial {
-  id: number;
-  name: string;
-  avatar: string;
-  text: string;
-  district: string;
-  rating: number;
-}
 
 export const TESTIMONIALS: Testimonial[] = [
   {
