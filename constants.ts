@@ -12,7 +12,7 @@ export const STORE_PHONE = '5545999999999';
 
 // --- CONFIGURAÇÃO DE NOTIFICAÇÃO AUTOMÁTICA (TELEGRAM) ---
 // TOKEN: A identidade do seu robô (Já configurado)
-export const TELEGRAM_BOT_TOKEN = '8453416683:AAGLZBfkFTGhNoyfcAmPnLDHEGTw5mlGZzU'; 
+export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN as string; 
 
 // CHAT ID: O seu "endereço" pessoal no Telegram.
 // IMPORTANTE: Mande uma mensagem para o usuário @userinfobot no Telegram.
