@@ -153,27 +153,7 @@ const AdminDashboard = ({
     }
   };
 
-  const handleUpdateStatus = async (id: string, nextStatus: OrderStatus) => {
-    if (window.confirm('Confirmar mudança de status do pedido?')) {
-      setUpdatingOrderId(id);
-      try {
-        await updateOrderStatus(id, nextStatus);
-      } catch (error) {
-        console.error("Erro ao atualizar:", error);
-        alert("Falha ao atualizar o pedido. Tente novamente.");
-      } finally {
-        setUpdatingOrderId(null);
-      }
-    }
-  };
-
-  const copyTrackingLink = (orderId: string) => {
-    const link = `${window.location.origin}/#/track/${orderId}`;
-    navigator.clipboard.writeText(link);
-    alert("Link de rastreamento copiado! Envie para o cliente.");
-  };
-
-  const handleNotifyCustomer = (order: Order) => {
+  const handleNotifyCustomer = (order: Order, statusContext?: OrderStatus) => {
     if (!order.customerWhatsapp) {
         alert("Cliente não cadastrou WhatsApp.");
         return;
@@ -183,10 +163,62 @@ const AdminDashboard = ({
     const phone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
     const name = order.customerName ? order.customerName.split(' ')[0] : 'Cliente';
     
-    const message = `Olá *${name}*, aqui é da TudoAkiExpress! 👋\n\nRecebemos seu pedido *#${order.id}* com sucesso!\n\n✅ *Status:* Em Separação\n📦 *Itens:* ${order.items.length} volumes\n🛵 *Previsão:* Logo sairá para entrega!\n\nSeus dados de entrega estão corretos?\n📍 _${order.address}_`;
+    let message = '';
+    
+    switch (statusContext) {
+        case 'processing':
+            message = `Olá *${name}*! 👋\n\nSeu pedido *#${order.id}* na TudoAkiExpress foi recebido e já está em *SEPARAÇÃO*! 📦\n\nEm breve ele sairá para entrega.`;
+            break;
+        case 'shipped':
+            message = `🚀 Saiu para entrega!\n\n*${name}*, nosso entregador já está a caminho com seu pedido *#${order.id}*.\n\n📍 Acompanhe: ${window.location.origin}/#/track/${order.id}`;
+            break;
+        case 'delivered':
+             message = `✅ Pedido Entregue!\n\nObrigado por comprar na TudoAkiExpress, *${name}*. Esperamos que goste! ⭐`;
+             break;
+        default:
+            message = `Olá *${name}*, aqui é da TudoAkiExpress! 👋\n\nRecebemos seu pedido *#${order.id}* com sucesso!\n\n✅ *Status:* Em Processamento\n📦 *Itens:* ${order.items.length} volumes\n\nQualquer dúvida, estamos à disposição!`;
+    }
     
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
+  };
+
+  const handleUpdateStatus = async (order: Order, nextStatus: OrderStatus) => {
+    const actionName = nextStatus === 'processing' ? 'Iniciar Separação' : nextStatus === 'shipped' ? 'Enviar para Entrega' : 'Finalizar';
+
+    if (!window.confirm(`Confirma ${actionName} para o pedido #${order.id}?`)) {
+      return;
+    }
+
+    setUpdatingOrderId(order.id);
+    try {
+      // 1. Atualiza Status
+      await updateOrderStatus(order.id, nextStatus);
+      
+      // 2. Lógica de Notificação Automática
+      if (order.customerWhatsapp) {
+        // Delay para garantir UX
+        setTimeout(() => {
+            const shouldNotify = window.confirm(`✅ Status Atualizado!\n\nDeseja enviar a mensagem de "${actionName}" para o cliente no WhatsApp agora?`);
+            
+            if (shouldNotify) {
+                handleNotifyCustomer(order, nextStatus);
+            }
+        }, 300);
+      }
+
+    } catch (error) {
+      console.error("Erro ao atualizar:", error);
+      alert("Erro ao atualizar status. Verifique o console.");
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const copyTrackingLink = (orderId: string) => {
+    const link = `${window.location.origin}/#/track/${orderId}`;
+    navigator.clipboard.writeText(link);
+    alert("Link de rastreamento copiado! Envie para o cliente.");
   };
 
   const wrapperClass = isLogisticsMode ? "min-h-screen py-10 px-4 bg-slate-900 text-slate-100" : "min-h-screen py-10 px-4 bg-gray-50 text-gray-900";
@@ -329,7 +361,7 @@ const AdminDashboard = ({
                             <div className="space-y-2">
                                 {action ? (
                                 <button 
-                                    onClick={() => handleUpdateStatus(order.id, action.next)}
+                                    onClick={() => handleUpdateStatus(order, action.next)}
                                     disabled={isUpdating}
                                     className={`${action.color} ${action.textColor} w-full py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
