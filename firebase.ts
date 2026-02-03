@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeFirestore } from "firebase/firestore";
+import { initializeFirestore, getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBslUdye9sN5EWF7nUCAQXjAlXparPT2og",
@@ -13,10 +13,19 @@ const firebaseConfig = {
 };
 
 // Inicializa o Firebase (Singleton)
+// Garante que não inicialize multiplas vezes no hot-reload ou refresh rápido
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 // Exporta o Banco de Dados (Firestore)
-// experimentalForceLongPolling: true resolve erros de "Could not reach Cloud Firestore backend" em algumas redes
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
+// Tenta inicializar com configurações específicas, mas faz fallback para instância existente se já houver
+let db;
+try {
+  db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+  });
+} catch (e) {
+  // Se já estiver inicializado (erro comum em refresh), pega a instância existente
+  db = getFirestore(app);
+}
+
+export { db };
