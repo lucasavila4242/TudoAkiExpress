@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { CourierLocation, Order } from '../types';
-import { MapPin, Navigation, User, Clock, CheckCircle2, Package, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, User, Clock, CheckCircle2, Package, Loader2, Bike } from 'lucide-react';
 
 declare const L: any; // Leaflet Global
 
@@ -40,6 +40,9 @@ const TrackingPage = () => {
 
   // 3. Renderiza o Mapa (Leaflet)
   useEffect(() => {
+    // Só renderiza mapa se o pedido estiver em rota (iniciado) ou entregue
+    if (!order || (order.status === 'shipped' && !order.shippedAt)) return;
+
     // Inicializa Mapa apenas uma vez
     if (!mapRef.current && document.getElementById('map')) {
         // Centro inicial padrão (Cascavel)
@@ -77,16 +80,60 @@ const TrackingPage = () => {
         // Suave pan para a nova posição
         mapRef.current.flyTo(latLng, 16, { animate: true, duration: 1 });
     }
-  }, [location]);
+  }, [location, order]);
 
+  // Loading Inicial (buscando pedido)
   if (!order) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4">
+    <div className="h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4 animate-in fade-in">
         <Loader2 className="w-12 h-12 text-blue-900 animate-spin mb-4" />
         <h2 className="text-xl font-black text-blue-900">Localizando seu Pedido...</h2>
         <p className="text-gray-500">Estamos conectando aos satélites.</p>
     </div>
   );
 
+  // TELA DE AGUARDANDO INÍCIO DA CORRIDA
+  // Se está 'shipped' mas não tem 'shippedAt', o motoboy ainda não clicou em "INICIAR ROTA"
+  if (order.status === 'shipped' && !order.shippedAt) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="relative">
+                <div className="absolute inset-0 bg-blue-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl relative z-10 border border-gray-100">
+                    <Bike className="w-16 h-16 text-blue-900" />
+                </div>
+                <div className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-full animate-bounce shadow-lg">
+                    Próximo da fila
+                </div>
+            </div>
+            
+            <div className="space-y-3 max-w-sm mx-auto">
+                <h2 className="text-3xl font-black text-blue-900 leading-none">Motoboy Conectado!</h2>
+                <p className="text-gray-500 font-medium text-lg leading-snug">
+                    Seu entregador já aceitou a missão e está se preparando para sair.
+                </p>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm w-full max-w-xs mx-auto">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center shrink-0">
+                        <Clock className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div className="text-left flex-1">
+                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Status em Tempo Real</p>
+                        <p className="text-base font-bold text-blue-900 leading-tight">Aguardando Partida</p>
+                    </div>
+                    <Loader2 className="w-6 h-6 text-red-500 animate-spin" />
+                </div>
+            </div>
+
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest animate-pulse">
+                O mapa abrirá automaticamente...
+            </p>
+        </div>
+      );
+  }
+
+  // TELA DO MAPA (EM ROTA ou ENTREGUE)
   return (
     <div className="h-screen flex flex-col bg-white overflow-hidden relative">
       {/* Botão Flutuante Voltar */}
