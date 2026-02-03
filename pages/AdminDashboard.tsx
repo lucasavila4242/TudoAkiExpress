@@ -5,25 +5,26 @@ import {
   ShoppingBag, 
   ArrowLeft, 
   MessageCircle, 
-  Clock,
-  CheckCircle2,
-  Package,
-  Truck,
-  MapPin,
-  Banknote,
-  Search,
-  Users,
-  AlertTriangle,
-  CreditCard,
-  Zap,
-  Filter,
-  Mail,
-  Award,
-  Navigation,
-  Eye,
-  Image as ImageIcon,
-  Timer,
-  Smartphone
+  Clock, 
+  CheckCircle2, 
+  Package, 
+  Truck, 
+  MapPin, 
+  Banknote, 
+  Search, 
+  Users, 
+  AlertTriangle, 
+  CreditCard, 
+  Zap, 
+  Filter, 
+  Mail, 
+  Award, 
+  Navigation, 
+  Eye, 
+  Image as ImageIcon, 
+  Timer, 
+  Smartphone,
+  Loader2
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
@@ -38,7 +39,7 @@ const AdminDashboard = ({
 }: { 
   currentUser: User | null, 
   orders: Order[],
-  updateOrderStatus: (id: string, s: OrderStatus) => void,
+  updateOrderStatus: (id: string, s: OrderStatus) => Promise<void>,
   isLogisticsMode?: boolean
 }) => {
   const [activeTab, setActiveTab] = useState<'users' | 'abandoned' | 'orders'>('orders');
@@ -46,6 +47,7 @@ const AdminDashboard = ({
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'all'>('all');
   const [proofModal, setProofModal] = useState<Order | null>(null);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   // Sound Refs
   const notificationAudio = useRef<HTMLAudioElement | null>(null);
@@ -88,10 +90,6 @@ const AdminDashboard = ({
     return () => unsubscribe();
   }, [currentUser]);
 
-  if (!currentUser || !currentUser.isAdmin) {
-    return <Navigate to="/" />;
-  }
-
   const abandonedCarts = useMemo(() => {
     return allUsers.filter(u => u.persistedCart && u.persistedCart.length > 0);
   }, [allUsers]);
@@ -130,6 +128,11 @@ const AdminDashboard = ({
     return Math.round((totalDurationMs / completedOrders.length) / 60000); // ms -> mins
   }, [orders]);
 
+  // SEGURANÇA: Verificar APÓS todos os hooks
+  if (!currentUser || !currentUser.isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
   const getDurationString = (order: Order) => {
       if (!order.shippedAt || !order.deliveryProof?.timestamp) return "N/A";
       const start = new Date(order.shippedAt).getTime();
@@ -150,9 +153,17 @@ const AdminDashboard = ({
     }
   };
 
-  const handleUpdateStatus = (id: string, nextStatus: OrderStatus) => {
+  const handleUpdateStatus = async (id: string, nextStatus: OrderStatus) => {
     if (window.confirm('Confirmar mudança de status do pedido?')) {
-      updateOrderStatus(id, nextStatus);
+      setUpdatingOrderId(id);
+      try {
+        await updateOrderStatus(id, nextStatus);
+      } catch (error) {
+        console.error("Erro ao atualizar:", error);
+        alert("Falha ao atualizar o pedido. Tente novamente.");
+      } finally {
+        setUpdatingOrderId(null);
+      }
     }
   };
 
@@ -262,6 +273,8 @@ const AdminDashboard = ({
                     {filteredOrders.map((order) => {
                       const action = getNextAction(order.status);
                       const isMercadoPago = order.paymentMethod === 'mercadopago';
+                      const isUpdating = updatingOrderId === order.id;
+
                       return (
                         <tr key={order.id} className={`${isLogisticsMode ? 'hover:bg-slate-700/50' : 'hover:bg-blue-50/30'} transition-colors`}>
                           <td className="px-6 py-6 align-top w-64">
@@ -315,8 +328,12 @@ const AdminDashboard = ({
                           <td className="px-6 py-6 text-center align-middle">
                             <div className="space-y-2">
                                 {action ? (
-                                <button onClick={() => handleUpdateStatus(order.id, action.next)} className={`${action.color} ${action.textColor} w-full py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 hover:brightness-110`}>
-                                    <action.icon size={16} /> {action.label}
+                                <button 
+                                    onClick={() => handleUpdateStatus(order.id, action.next)}
+                                    disabled={isUpdating}
+                                    className={`${action.color} ${action.textColor} w-full py-3 rounded-xl text-[10px] font-black uppercase shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <><action.icon size={16} /> {action.label}</>}
                                 </button>
                                 ) : order.status === 'shipped' ? (
                                     <div className="text-center opacity-50">

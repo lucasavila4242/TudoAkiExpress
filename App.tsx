@@ -458,16 +458,12 @@ export default function App() {
     };
 
     try { 
-        // 1. Salva no Firebase
+        // Se já tiver ID (do Mercado Pago), usa setDoc para garantir o ID personalizado, senão addDoc
         if (orderDetails.id) {
             await setDoc(doc(db, "orders", orderDetails.id), newOrderData);
         } else {
             await addDoc(collection(db, "orders"), newOrderData); 
         }
-
-        // 2. DISPARA NOTIFICAÇÃO AUTOMÁTICA EM BACKGROUND (TELEGRAM)
-        sendOrderNotification(newOrderData);
-
     } catch (e) { console.error("Erro save order:", e); }
     
     updateDB({ points: user.points - pointsSpent + pointsEarned, lifetimePoints: user.lifetimePoints + pointsEarned, persistedCart: [], lastCartUpdate: undefined }, `Finalizou um pedido`, 'order');
