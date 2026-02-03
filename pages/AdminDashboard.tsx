@@ -155,7 +155,7 @@ const AdminDashboard = ({
 
   const handleNotifyCustomer = (order: Order, statusContext?: OrderStatus) => {
     if (!order.customerWhatsapp) {
-        alert("Cliente não cadastrou WhatsApp.");
+        alert("⚠️ Este pedido não tem WhatsApp cadastrado (pedido antigo ou incompleto).");
         return;
     }
 
@@ -167,16 +167,16 @@ const AdminDashboard = ({
     
     switch (statusContext) {
         case 'processing':
-            message = `Olá *${name}*! 👋\n\nSeu pedido *#${order.id}* na TudoAkiExpress foi recebido e já está em *SEPARAÇÃO*! 📦\n\nEm breve ele sairá para entrega.`;
+            message = `Olá *${name}*! 👋\n\nRecebemos seu pedido *#${order.id}* na TudoAkiExpress!\n\n📦 Já iniciamos a *SEPARAÇÃO* dos seus produtos.\n\nFique atento(a), logo ele sai para entrega! 🚀`;
             break;
         case 'shipped':
-            message = `🚀 Saiu para entrega!\n\n*${name}*, nosso entregador já está a caminho com seu pedido *#${order.id}*.\n\n📍 Acompanhe: ${window.location.origin}/#/track/${order.id}`;
+            message = `🛵 *SAIU PARA ENTREGA!*\n\nOlá *${name}*, nosso entregador já está a caminho com seu pedido *#${order.id}*.\n\n📍 Você pode acompanhar a localização em tempo real aqui:\n${window.location.origin}/#/track/${order.id}`;
             break;
         case 'delivered':
-             message = `✅ Pedido Entregue!\n\nObrigado por comprar na TudoAkiExpress, *${name}*. Esperamos que goste! ⭐`;
+             message = `✅ *ENTREGA REALIZADA!*\n\nObrigado por comprar na TudoAkiExpress, *${name}*.\n\nSeu pedido *#${order.id}* foi entregue com sucesso. Esperamos que goste! ⭐`;
              break;
         default:
-            message = `Olá *${name}*, aqui é da TudoAkiExpress! 👋\n\nRecebemos seu pedido *#${order.id}* com sucesso!\n\n✅ *Status:* Em Processamento\n📦 *Itens:* ${order.items.length} volumes\n\nQualquer dúvida, estamos à disposição!`;
+            message = `Olá *${name}*, aqui é da TudoAkiExpress! 👋\n\nRecebemos seu pedido *#${order.id}*.\n\nQualquer dúvida, estamos à disposição!`;
     }
     
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
@@ -192,24 +192,12 @@ const AdminDashboard = ({
 
     setUpdatingOrderId(order.id);
     try {
-      // 1. Atualiza Status
+      // 1. Atualiza Status APENAS (Sem notificação automática)
       await updateOrderStatus(order.id, nextStatus);
       
-      // 2. Lógica de Notificação Automática
-      if (order.customerWhatsapp) {
-        // Delay para garantir UX
-        setTimeout(() => {
-            const shouldNotify = window.confirm(`✅ Status Atualizado!\n\nDeseja enviar a mensagem de "${actionName}" para o cliente no WhatsApp agora?`);
-            
-            if (shouldNotify) {
-                handleNotifyCustomer(order, nextStatus);
-            }
-        }, 300);
-      }
-
     } catch (error) {
       console.error("Erro ao atualizar:", error);
-      alert("Erro ao atualizar status. Verifique o console.");
+      alert("Erro ao atualizar status. Verifique se você está conectado.");
     } finally {
       setUpdatingOrderId(null);
     }
@@ -242,7 +230,7 @@ const AdminDashboard = ({
               <div className="hidden sm:flex items-center gap-2">
                  <span className={`text-[10px] font-bold uppercase ${isLogisticsMode ? 'text-emerald-400' : 'text-green-600'} animate-pulse flex items-center gap-1 border ${isLogisticsMode ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-green-200 bg-green-50'} px-2 py-1 rounded-full`}>
                       <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                      Firebase Online
+                      Sistema Online
                  </span>
               </div>
             </div>
