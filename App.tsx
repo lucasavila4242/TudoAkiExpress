@@ -32,7 +32,6 @@ import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
 import { db } from './firebase'; 
 import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion, setDoc } from 'firebase/firestore';
-import { sendOrderNotification } from './services/notification'; // Serviço Atualizado (Telegram)
 
 // Pages
 import Home from './pages/Home';
