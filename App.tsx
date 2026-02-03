@@ -11,7 +11,7 @@ import {
   Clock, 
   Truck, 
   Star, 
-  ChevronLeft,
+  ChevronLeft, 
   ShoppingCart,
   CheckCircle2,
   BellRing,
@@ -31,7 +31,7 @@ import {
 import { PRODUCTS, CATEGORIES } from './constants';
 import { Product, CartItem, User as UserType, UserActivity, Order, OrderStatus } from './types';
 import { db } from './firebase'; 
-import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion, setDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, updateDoc, doc, arrayUnion, setDoc, where, getDocs } from 'firebase/firestore';
 
 // Pages
 import Home from './pages/Home';
@@ -365,7 +365,11 @@ export default function App() {
         const liveOrders: Order[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          liveOrders.push({ id: doc.id, ...data } as Order);
+          // NOTA: Para pedidos novos (criados via setDoc no onOrderComplete abaixo), doc.id == data.id.
+          // Para pedidos antigos, doc.id pode ser um hash e data.id é o 'ORD-xxx'.
+          // Usamos '...data' que contém o ID visual (ORD-xxx) e adicionamos uma propriedade interna se precisar
+          // mas o ideal é que o ID do objeto seja o ID visual.
+          liveOrders.push({ ...data, id: data.id || doc.id } as Order);
         });
         setOrders(liveOrders);
         setFirebaseError(null);
@@ -379,19 +383,32 @@ export default function App() {
     }
   }, []);
 
-  // Lógica de Atualização de Usuário (DB + Local)
   const updateDB = useCallback(async (updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
-    const newActivity: UserActivity | null = activity ? { id: Math.random().toString(36).substr(2, 9), type: activityType, action: activity, timestamp: new Date().toISOString() } : null;
-    const updatedUser = { ...user, ...updates, activityLog: newActivity ? [newActivity, ...(user.activityLog || [])].slice(0, 50) : (user.activityLog || []) };
+    const newActivity: UserActivity | null = activity ? { 
+        id: Math.random().toString(36).substr(2, 9), 
+        type: activityType, 
+        action: activity, 
+        timestamp: new Date().toISOString() 
+    } : null;
+
+    const updatedUser = { 
+        ...user, 
+        ...updates, 
+        activityLog: newActivity ? [newActivity, ...(user.activityLog || [])].slice(0, 50) : (user.activityLog || []) 
+    };
+
     setUser(updatedUser);
     localStorage.setItem('aki_current_user', JSON.stringify(updatedUser));
+
     try {
         const userRef = doc(db, "users", user.id);
         const firebaseUpdates: any = { ...updates };
         if (newActivity) firebaseUpdates.activityLog = arrayUnion(newActivity);
         await setDoc(userRef, firebaseUpdates, { merge: true });
-    } catch (e) { console.error("Erro sync:", e); }
+    } catch (e) { 
+        console.error("Erro sync Firestore:", e); 
+    }
   }, [user]);
 
   // Carrega Carrinho/Wishlist do Usuário Logado
@@ -442,7 +459,6 @@ export default function App() {
   const onOrderComplete = async (pointsEarned: number, pointsSpent: number, orderDetails: any) => {
     if (!user) return;
     
-    // Agora capturamos o nome e whatsapp do objeto orderDetails (vindo do Checkout.tsx)
     const newOrderData: Order = { 
         id: orderDetails.id || `ORD-${Date.now()}`,
         userId: user.id, 
@@ -452,36 +468,58 @@ export default function App() {
         timestamp: new Date().toISOString(), 
         address: orderDetails.address, 
         paymentMethod: orderDetails.paymentMethod,
-        // Novos campos:
         customerName: orderDetails.customerName || user.name,
         customerWhatsapp: orderDetails.customerWhatsapp || user.whatsapp
     };
 
     try { 
-        // Se já tiver ID (do Mercado Pago), usa setDoc para garantir o ID personalizado, senão addDoc
-        if (orderDetails.id) {
-            await setDoc(doc(db, "orders", orderDetails.id), newOrderData);
-        } else {
-            await addDoc(collection(db, "orders"), newOrderData); 
-        }
+        // CORREÇÃO CRÍTICA:
+        // Sempre usamos setDoc com o ID do pedido como chave do documento.
+        // Isso garante que no futuro, quando buscarmos doc(db, 'orders', order.id), ele exista.
+        await setDoc(doc(db, "orders", newOrderData.id), newOrderData);
     } catch (e) { console.error("Erro save order:", e); }
     
     updateDB({ points: user.points - pointsSpent + pointsEarned, lifetimePoints: user.lifetimePoints + pointsEarned, persistedCart: [], lastCartUpdate: undefined }, `Finalizou um pedido`, 'order');
     setCart([]);
   };
 
+  // Função ROBUSTA para atualizar status, lidando com IDs antigos e novos
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
-      const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, { status: newStatus });
-    } catch (e) { console.error("Erro update status:", e); }
+        // Tentativa 1: Atualização Direta (Funciona para pedidos novos onde DocID == OrderID)
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, { status: newStatus });
+    } catch (e: any) { 
+        // Se falhar com "No document to update", significa que é um pedido antigo
+        // onde o ID do documento é diferente do ID interno (ORD-xxx).
+        if (e.code === 'not-found' || e.message.includes('No document to update')) {
+            console.warn(`Tentando recuperação para pedido legado: ${orderId}`);
+            try {
+                // Busca o documento pelo campo interno 'id'
+                const q = query(collection(db, "orders"), where("id", "==", orderId));
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    const actualDocRef = querySnapshot.docs[0].ref;
+                    await updateDoc(actualDocRef, { status: newStatus });
+                    console.log("Recuperação bem sucedida.");
+                } else {
+                    console.error("Pedido realmente não encontrado.");
+                }
+            } catch (retryErr) {
+                console.error("Falha na recuperação:", retryErr);
+                throw retryErr;
+            }
+        } else {
+            console.error("Erro update status:", e); 
+            throw e; 
+        }
+    }
   };
 
   return (
     <HashRouter>
       <div className="flex flex-col min-h-screen">
-        
-        {/* CONDICIONAL MESTRA: SE FOR MOTOBOY, RENDERIZA APENAS O DASHBOARD DELE */}
         {user?.isCourier ? (
             <MotoboyDashboard user={user} orders={orders} logout={logout} />
         ) : (
@@ -508,8 +546,6 @@ export default function App() {
                     <Route path="/account" element={<Account user={user} wishlist={wishlist} orders={orders.filter(o => o.userId === user?.id)} toggleWishlist={toggleWishlist} addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} onOpenAuth={() => setIsAuthModalOpen(true)} updateOrderStatus={updateOrderStatus} />} />
                     <Route path="/admin" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} />} />
                     <Route path="/logistica" element={<AdminDashboard currentUser={user} orders={orders} updateOrderStatus={updateOrderStatus} isLogisticsMode={true} />} />
-                    
-                    {/* Rota PÚBLICA de rastreamento (acessível por todos, inclusive sem login) */}
                     <Route path="/track/:orderId" element={<TrackingPage />} />
                   </Routes>
                 </main>

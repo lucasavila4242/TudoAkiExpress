@@ -183,11 +183,12 @@ const AdminDashboard = ({
     try {
       // Atualiza o banco de dados (Firebase)
       // O App.tsx propaga essa mudança para todos (Admin e Cliente) automaticamente
+      // A função updateOrderStatus agora é ROBUSTA e lida com pedidos antigos.
       await updateOrderStatus(order.id, nextStatus);
       
     } catch (error) {
       console.error("Erro ao atualizar:", error);
-      alert("Erro ao atualizar status. Verifique se você está conectado.");
+      alert("Erro ao atualizar status. O sistema tentou recuperar o documento mas falhou.");
     } finally {
       setUpdatingOrderId(null);
     }
