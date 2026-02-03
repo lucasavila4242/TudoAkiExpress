@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2 } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, RefreshCw } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
@@ -17,6 +17,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const [watchId, setWatchId] = useState<number | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
@@ -105,11 +106,12 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   useEffect(() => {
     if (activeOrder) {
       if (!navigator.geolocation) {
-        alert("Seu navegador não suporta geolocalização. O rastreamento não funcionará.");
+        setGpsError("GPS não suportado neste navegador.");
         return;
       }
 
       console.log("Iniciando rastreamento GPS para ordem:", activeOrder.id);
+      setGpsError(null);
 
       const id = navigator.geolocation.watchPosition(
         (position) => {
@@ -117,6 +119,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
           
           // 1. Atualiza estado local para o Mapa do Motoboy
           setCurrentLocation({ lat: latitude, lng: longitude });
+          setGpsError(null);
 
           // 2. Atualiza no Firebase para o Cliente/Admin
           const locationRef = doc(db, "tracking", activeOrder.id);
@@ -131,10 +134,13 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
              courierName: user.name
           }, { merge: true }).catch(err => console.error("Erro ao enviar GPS:", err));
         },
-        (error) => console.error("Erro GPS:", error),
+        (error) => {
+            console.error("Erro GPS:", error);
+            setGpsError("Sinal GPS fraco ou bloqueado.");
+        },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 20000,
           maximumAge: 0
         }
       );
@@ -146,6 +152,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         setWatchId(null);
       }
       setCurrentLocation(null);
+      setGpsError(null);
     }
 
     return () => {
@@ -153,47 +160,51 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     };
   }, [activeOrder?.id]);
 
-  // CORREÇÃO DO PISCA-PISCA: Separação de Efeitos
+  // CORREÇÃO DO PISCA-PISCA E CONFLITO DOM
 
-  // Efeito 1: Inicialização e Destruição do Mapa (Apenas 1 vez por pedido)
+  // Efeito 1: Inicialização e Destruição do Mapa
   useEffect(() => {
     if (!activeOrder) return;
 
-    const container = document.getElementById('motoboy-map');
-    if (!container) return;
+    // Aguarda um pequeno delay para garantir que o DOM renderizou a div #motoboy-map
+    const timer = setTimeout(() => {
+        const container = document.getElementById('motoboy-map');
+        if (!container) return;
 
-    // Se já existe um mapa, não faz nada (evita recriar)
-    if (mapRef.current) return;
+        // Se já existe um mapa, não faz nada (evita recriar)
+        if (mapRef.current) {
+            mapRef.current.invalidateSize(); // Garante que o tamanho está correto
+            return;
+        }
 
-    // Limpeza de segurança para Leaflet
-    const containerAny = container as any;
-    if (containerAny._leaflet_id) {
-        containerAny._leaflet_id = null;
-    }
+        try {
+            console.log("Inicializando Mapa...");
+            mapRef.current = L.map('motoboy-map', { 
+                zoomControl: false, 
+                attributionControl: false 
+            }).setView([-24.9555, -53.4552], 15);
+            
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20
+            }).addTo(mapRef.current);
+        } catch (e) {
+            console.error("Erro ao iniciar mapa:", e);
+        }
+    }, 100);
 
-    try {
-        console.log("Inicializando Mapa...");
-        mapRef.current = L.map('motoboy-map', { 
-            zoomControl: false, 
-            attributionControl: false 
-        }).setView([-24.9555, -53.4552], 15);
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20
-        }).addTo(mapRef.current);
-    } catch (e) {
-        console.error("Erro ao iniciar mapa:", e);
-    }
+    return () => clearTimeout(timer);
+  }, [activeOrder]); // Recria se o pedido mudar (para garantir DOM limpo)
 
-    // Cleanup: Destrói o mapa apenas quando sair do pedido ativo (unmount ou troca de activeOrder)
-    return () => {
+  // Cleanup effect separado
+  useEffect(() => {
+      return () => {
         if (mapRef.current) {
             mapRef.current.remove();
             mapRef.current = null;
             markerRef.current = null;
         }
-    };
-  }, [activeOrder?.id]); // Dependência: Apenas ID do pedido
+      }
+  }, []);
 
   // Efeito 2: Atualização do Marcador (Apenas move, não recria o mapa)
   useEffect(() => {
@@ -361,11 +372,25 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                         </button>
                     </div>
 
-                    {/* MAPA DO MOTOBOY (Maior e com bordas corrigidas) */}
-                    <div id="motoboy-map" className="w-full h-80 bg-emerald-800/50 rounded-[2rem] mb-6 border-4 border-emerald-500/30 shadow-inner relative overflow-hidden z-0">
-                        {!currentLocation && (
-                            <div className="absolute inset-0 flex items-center justify-center text-emerald-100/50">
-                                <Loader2 className="animate-spin mr-2" /> Buscando sinal...
+                    {/* CORREÇÃO DO MAPA: Estrutura relativa para evitar conflito DOM entre React e Leaflet */}
+                    <div className="relative w-full h-80 mb-6 rounded-[2rem] border-4 border-emerald-500/30 shadow-inner overflow-hidden bg-emerald-800/50">
+                        {/* 1. O Mapa fica sozinho nesta div (sem children do React) */}
+                        <div id="motoboy-map" className="w-full h-full z-0" />
+                        
+                        {/* 2. Overlays ficam FORA da div do mapa, mas posicionados em cima via CSS absolute */}
+                        {!currentLocation && !gpsError && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-100 bg-emerald-900/80 z-10 backdrop-blur-sm">
+                                <Loader2 className="animate-spin mb-2 w-8 h-8" /> 
+                                <span className="font-bold text-sm">Buscando sinal GPS...</span>
+                            </div>
+                        )}
+
+                        {gpsError && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-red-200 bg-red-900/90 z-20 backdrop-blur-sm p-4 text-center">
+                                <span className="font-bold mb-2">⚠️ {gpsError}</span>
+                                <button onClick={() => window.location.reload()} className="bg-white text-red-900 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+                                    <RefreshCw size={14} /> Tentar Novamente
+                                </button>
                             </div>
                         )}
                     </div>

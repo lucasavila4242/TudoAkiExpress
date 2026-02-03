@@ -1,5 +1,5 @@
 
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -12,8 +12,8 @@ const firebaseConfig = {
   measurementId: "G-T41YC6M8PZ"
 };
 
-// Inicializa o Firebase
-const app = initializeApp(firebaseConfig);
+// Inicializa o Firebase (Singleton)
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 // Exporta o Banco de Dados (Firestore)
 // experimentalForceLongPolling: true resolve erros de "Could not reach Cloud Firestore backend" em algumas redes

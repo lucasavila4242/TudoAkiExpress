@@ -352,9 +352,17 @@ export default function App() {
   const [showRecoveryNudge, setShowRecoveryNudge] = useState(false);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   
+  // CORREÇÃO TELA BRANCA: Inicialização protegida do estado do usuário
   const [user, setUser] = useState<UserType | null>(() => {
-    const saved = localStorage.getItem('aki_current_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('aki_current_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Erro critico ao recuperar sessão:", e);
+      // Se houver erro no JSON, limpa o storage para evitar loop de erro
+      localStorage.removeItem('aki_current_user');
+      return null;
+    }
   });
 
   // FIREBASE LISTENER (PEDIDOS)
@@ -365,11 +373,9 @@ export default function App() {
         const liveOrders: Order[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          // NOTA: Para pedidos novos (criados via setDoc no onOrderComplete abaixo), doc.id == data.id.
-          // Para pedidos antigos, doc.id pode ser um hash e data.id é o 'ORD-xxx'.
-          // Usamos '...data' que contém o ID visual (ORD-xxx) e adicionamos uma propriedade interna se precisar
-          // mas o ideal é que o ID do objeto seja o ID visual.
-          liveOrders.push({ ...data, id: data.id || doc.id } as Order);
+          // FIX CRÍTICO: Usa doc.id como ID oficial do objeto, mas mantém o resto dos dados.
+          // Isso garante que updateOrderStatus use o ID correto do documento.
+          liveOrders.push({ ...data, id: doc.id } as Order);
         });
         setOrders(liveOrders);
         setFirebaseError(null);
@@ -385,6 +391,8 @@ export default function App() {
 
   const updateDB = useCallback(async (updates: Partial<UserType>, activity?: string, activityType: UserActivity['type'] = 'auth') => {
     if (!user) return;
+    
+    // Cria nova atividade se necessário
     const newActivity: UserActivity | null = activity ? { 
         id: Math.random().toString(36).substr(2, 9), 
         type: activityType, 
@@ -392,15 +400,20 @@ export default function App() {
         timestamp: new Date().toISOString() 
     } : null;
 
+    // Mescla atualizações
     const updatedUser = { 
         ...user, 
         ...updates, 
         activityLog: newActivity ? [newActivity, ...(user.activityLog || [])].slice(0, 50) : (user.activityLog || []) 
     };
 
+    // 1. Atualiza Estado Local
     setUser(updatedUser);
+    
+    // 2. Persiste Sessão (LocalStorage)
     localStorage.setItem('aki_current_user', JSON.stringify(updatedUser));
 
+    // 3. Persiste no Firebase (Background)
     try {
         const userRef = doc(db, "users", user.id);
         const firebaseUpdates: any = { ...updates };
@@ -473,9 +486,8 @@ export default function App() {
     };
 
     try { 
-        // CORREÇÃO CRÍTICA:
-        // Sempre usamos setDoc com o ID do pedido como chave do documento.
-        // Isso garante que no futuro, quando buscarmos doc(db, 'orders', order.id), ele exista.
+        // FIX CRÍTICO: Sempre usar setDoc com o ID do objeto. 
+        // Isso garante que DocumentID == OrderID, permitindo atualizações futuras.
         await setDoc(doc(db, "orders", newOrderData.id), newOrderData);
     } catch (e) { console.error("Erro save order:", e); }
     
@@ -483,33 +495,13 @@ export default function App() {
     setCart([]);
   };
 
-  // Função BLINDADA para atualizar status, lidando com IDs antigos e erros de documento
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
-        // Tentativa 1: Atualização Direta (Assume ID novo: DocID == OrderID)
-        const orderRef = doc(db, "orders", orderId);
-        await updateDoc(orderRef, { status: newStatus });
-    } catch (e: any) { 
-        // Se falhar (ex: documento não existe com esse ID), tenta buscar pelo campo 'id' interno
-        // Isso resolve o problema dos pedidos antigos com IDs gerados aleatoriamente
-        console.warn(`Update direto falhou para ${orderId}. Tentando recuperação por query...`, e);
-        
-        try {
-            const q = query(collection(db, "orders"), where("id", "==", orderId));
-            const querySnapshot = await getDocs(q);
-            
-            if (!querySnapshot.empty) {
-                const actualDocRef = querySnapshot.docs[0].ref;
-                await updateDoc(actualDocRef, { status: newStatus });
-                console.log(`Status do pedido ${orderId} recuperado e atualizado com sucesso.`);
-            } else {
-                console.error(`Pedido ${orderId} realmente não existe no banco.`);
-                throw e; // Relança o erro original se não achar de jeito nenhum
-            }
-        } catch (retryErr) {
-            console.error("Erro fatal ao atualizar status:", retryErr);
-            throw retryErr;
-        }
+      const orderRef = doc(db, "orders", orderId);
+      await updateDoc(orderRef, { status: newStatus });
+    } catch (e) { 
+        console.error("Erro update status:", e); 
+        throw e; 
     }
   };
 
