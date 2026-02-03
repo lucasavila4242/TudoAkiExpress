@@ -254,13 +254,15 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         img.src = reader.result as string;
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 800;
+            // FIX: Reduzir tamanho máximo e qualidade para evitar erro de limite do Firestore (1MB)
+            const MAX_WIDTH = 600; 
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            // Qualidade 0.5 gera arquivos bem menores (50kb-150kb)
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5);
             setPhotoPreview(compressedBase64);
         };
       };
@@ -283,7 +285,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             status: 'delivered',
             deliveryProof: {
                 recipientName,
-                photo: photoPreview,
+                photo: photoPreview, // Agora otimizado
                 timestamp: new Date().toISOString()
             }
         });
@@ -295,16 +297,24 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         setPhotoPreview(null);
         setRecipientName('');
         alert("Entrega Finalizada com Sucesso! 🚀");
-    } catch (e) {
+    } catch (e: any) {
         console.error("Erro ao finalizar:", e);
-        alert("Erro ao salvar. Tente novamente.");
+        // Mensagem de erro mais clara
+        if (e.code === 'permission-denied') {
+             alert("Erro de permissão. Tente relogar.");
+        } else if (e.toString().includes('exceeded')) {
+             alert("A foto ficou muito pesada. Tente tirar outra com menos detalhes.");
+        } else {
+             alert(`Erro ao salvar: ${e.message || 'Tente novamente.'}`);
+        }
     } finally {
         setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white pb-20 font-sans">
+    // FIX: min-h-[100dvh] previne o pisca-pisca branco em mobile quando a barra de endereço move
+    <div className="min-h-[100dvh] bg-slate-900 text-white pb-20 font-sans">
       {/* Header Fixo */}
       <div className="bg-slate-800 p-6 shadow-lg flex justify-between items-center sticky top-0 z-50 border-b border-slate-700">
         <div className="flex items-center gap-3">

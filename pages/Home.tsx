@@ -76,7 +76,7 @@ const Home = ({
   }, []);
 
   return (
-    <div className="pb-20">
+    <div className="pb-20 overflow-hidden">
       {/* Hero Banner Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 py-12 sm:py-24">
         <div className="absolute inset-0 z-0">
@@ -129,7 +129,7 @@ const Home = ({
             
             <div className="hidden lg:block relative">
               <div className="relative z-10 bg-gradient-to-tr from-white/10 to-white/5 backdrop-blur-xl border border-white/20 p-4 rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)]">
-                <div className="relative rounded-[2.5rem] overflow-hidden aspect-[4/5] group">
+                <div className="relative rounded-[2.5rem] overflow-hidden aspect-[4/5] group isolate">
                   <img 
                     src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop" 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
@@ -154,21 +154,22 @@ const Home = ({
                   </div>
                 </div>
 
-                <div className="absolute -right-8 top-12 bg-white p-5 rounded-3xl shadow-2xl border border-gray-100 animate-bounce-slow">
+                {/* Widgets movidos para dentro do container para evitar bordas quebradas */}
+                <div className="absolute right-8 top-12 bg-white p-5 rounded-3xl shadow-2xl border border-gray-100 animate-bounce-slow z-20 max-w-[200px]">
                   <div className="flex items-center gap-3">
-                    <div className="bg-green-100 p-2 rounded-xl">
+                    <div className="bg-green-100 p-2 rounded-xl shrink-0">
                       <CheckCircle2 className="h-6 w-6 text-green-600" />
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-gray-400 uppercase">Status</p>
-                      <p className="text-xs font-bold text-blue-900">Entrega Garantida</p>
+                      <p className="text-xs font-bold text-blue-900 leading-tight">Entrega Garantida</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="absolute -left-8 bottom-24 bg-blue-900 p-5 rounded-3xl shadow-2xl border border-blue-800 animate-pulse-subtle">
+                <div className="absolute left-8 bottom-24 bg-blue-900 p-5 rounded-3xl shadow-2xl border border-blue-800 animate-pulse-subtle z-20 max-w-[200px]">
                    <div className="flex items-center gap-3">
-                    <div className="bg-red-50 p-2 rounded-xl">
+                    <div className="bg-red-50 p-2 rounded-xl shrink-0">
                       <ShoppingBag className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -178,8 +179,9 @@ const Home = ({
                   </div>
                 </div>
               </div>
-              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-red-500 rounded-full blur-3xl opacity-40"></div>
-              <div className="absolute -top-6 -left-6 w-24 h-24 bg-blue-400 rounded-full blur-3xl opacity-30"></div>
+              {/* Efeitos de fundo mantidos */}
+              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-red-500 rounded-full blur-3xl opacity-40 z-0"></div>
+              <div className="absolute -top-6 -left-6 w-24 h-24 bg-blue-400 rounded-full blur-3xl opacity-30 z-0"></div>
             </div>
           </div>
         </div>

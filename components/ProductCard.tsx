@@ -51,7 +51,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </button>
       )}
 
-      <Link to={`/product/${product.id}`} className="relative block aspect-square overflow-hidden rounded-xl mb-4">
+      <Link to={`/product/${product.id}`} className="relative block aspect-square overflow-hidden rounded-xl mb-4 isolate transform-gpu">
         <img 
           src={product.image} 
           alt={product.name}

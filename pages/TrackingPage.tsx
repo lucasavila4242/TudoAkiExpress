@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { CourierLocation, Order } from '../types';
-import { MapPin, Navigation, User, Clock, CheckCircle2, Package, Loader2, Bike } from 'lucide-react';
+import { MapPin, Navigation, User, Clock, CheckCircle2, Package, Loader2, Bike, X } from 'lucide-react';
 
 declare const L: any; // Leaflet Global
 
@@ -12,6 +12,8 @@ const TrackingPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const [location, setLocation] = useState<CourierLocation | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
+  
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
 
@@ -84,7 +86,7 @@ const TrackingPage = () => {
 
   // Loading Inicial (buscando pedido)
   if (!order) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-4 animate-in fade-in">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-gray-50 text-center p-4 animate-in fade-in">
         <Loader2 className="w-12 h-12 text-blue-900 animate-spin mb-4" />
         <h2 className="text-xl font-black text-blue-900">Localizando seu Pedido...</h2>
         <p className="text-gray-500">Estamos conectando aos satélites.</p>
@@ -95,7 +97,7 @@ const TrackingPage = () => {
   // Se está 'shipped' mas não tem 'shippedAt', o motoboy ainda não clicou em "INICIAR ROTA"
   if (order.status === 'shipped' && !order.shippedAt) {
       return (
-        <div className="h-screen flex flex-col items-center justify-center bg-gray-50 text-center p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-gray-50 text-center p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="relative">
                 <div className="absolute inset-0 bg-blue-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
                 <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl relative z-10 border border-gray-100">
@@ -135,7 +137,8 @@ const TrackingPage = () => {
 
   // TELA DO MAPA (EM ROTA ou ENTREGUE)
   return (
-    <div className="h-screen flex flex-col bg-white overflow-hidden relative">
+    // FIX: min-h-[100dvh] para evitar tela branca piscando no mobile
+    <div className="min-h-[100dvh] flex flex-col bg-white overflow-hidden relative">
       {/* Botão Flutuante Voltar */}
       <div className="absolute top-4 left-4 z-[999]">
          <Link to="/" className="bg-white/90 backdrop-blur-md p-3 rounded-full shadow-lg border border-gray-100 flex items-center justify-center text-gray-700 hover:text-blue-900 transition-colors">
@@ -199,7 +202,10 @@ const TrackingPage = () => {
                         </p>
                     </div>
                     {order.deliveryProof.photo && (
-                        <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform" onClick={() => window.open(order.deliveryProof?.photo)}>
+                        <div 
+                            className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform" 
+                            onClick={() => setIsZoomed(true)}
+                        >
                             <img src={order.deliveryProof.photo} className="w-full h-full object-cover" />
                         </div>
                     )}
@@ -237,6 +243,20 @@ const TrackingPage = () => {
              <p className="text-[10px] text-gray-300 uppercase font-black tracking-[0.2em]">TudoAki Logistics © 2024</p>
         </div>
       </div>
+
+      {/* MODAL DE ZOOM DA FOTO */}
+      {isZoomed && order.deliveryProof?.photo && (
+        <div className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center p-4 animate-in fade-in cursor-pointer" onClick={() => setIsZoomed(false)}>
+            <button className="absolute top-4 right-4 text-white p-2 rounded-full bg-gray-800/50 hover:bg-red-500 transition-colors">
+                <X size={24} />
+            </button>
+            <img 
+                src={order.deliveryProof.photo} 
+                className="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain" 
+                onClick={(e) => e.stopPropagation()} 
+            />
+        </div>
+      )}
     </div>
   );
 };
