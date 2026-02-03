@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, RefreshCw } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, RefreshCw, XCircle, Play } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
@@ -15,18 +16,20 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  
+  // Estados de Notificação
+  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
+  const [isRinging, setIsRinging] = useState(false);
 
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   
-  // Referência para controlar o som de notificação
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Referência para rastrear o tamanho anterior da fila e detectar novos pedidos
   const prevQueueLength = useRef<number>(0);
 
-  // Filtra apenas pedidos que estão "Em Rota" (Shipped) mas que ainda não foram assumidos localmente pelo app
+  // Filtra pedidos disponíveis (Shipped = Disponível para Motoboy nesta lógica, ou Pending se for lógica direta)
+  // Assumindo: status 'shipped' significa "Pronto para coleta/Em rota" mas ainda não assumido por este motoboy especificamente (a menos que já tenha courierId)
   const deliveryQueue = orders.filter(o => o.status === 'shipped');
 
   // SEGURANÇA
@@ -34,91 +37,104 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     return <Navigate to="/" />;
   }
 
-  // --- SISTEMA DE NOTIFICAÇÃO SONORA E PUSH ---
-  
-  // 1. Inicializa o Audio e pede permissão
+  // --- SISTEMA DE ALERTA ---
+
   useEffect(() => {
-    // Cria o elemento de áudio (Som de notificação curto e alto)
+    // Som de sirene/alerta persistente
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    
-    // Tenta pedir permissão de notificação logo ao carregar
-    if ("Notification" in window) {
-      if (Notification.permission === "granted") {
-        setNotificationsEnabled(true);
-      }
+    audioRef.current.loop = true; // IMPORTANTE: Toca em loop até atender
+
+    // Verifica permissão inicial
+    if ("Notification" in window && Notification.permission === "granted") {
+      // Apenas marca visualmente, o som precisa de clique do usuário
     }
     
-    // Seta o tamanho inicial da fila para não apitar no refresh
+    // Seta tamanho inicial
     prevQueueLength.current = deliveryQueue.length;
+
+    return () => {
+        if(audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
+    }
   }, []);
 
-  // 2. Função para ativar notificações manualmente (necessário para desbloquear áudio no navegador)
-  const enableNotifications = () => {
-    if ("Notification" in window) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === "granted") {
-          setNotificationsEnabled(true);
-          // Toca um som de teste baixo para desbloquear o AudioContext do navegador
-          if (audioRef.current) {
-            audioRef.current.volume = 0.5;
-            audioRef.current.play().catch(e => console.log("Audio play blocked", e));
-          }
-        }
-      });
-    }
-  };
-
-  // 3. Monitora a fila de entregas
+  // Monitora novos pedidos
   useEffect(() => {
-    // Se o número de pedidos na fila aumentou
-    if (deliveryQueue.length > prevQueueLength.current) {
-      triggerNewOrderAlert();
+    // Se a fila aumentou E o som está habilitado (plantão ativo)
+    if (deliveryQueue.length > prevQueueLength.current && isSoundEnabled) {
+      startRinging();
     }
     prevQueueLength.current = deliveryQueue.length;
-  }, [deliveryQueue.length]);
+  }, [deliveryQueue.length, isSoundEnabled]);
 
-  const triggerNewOrderAlert = () => {
-    // A. Toca o Som
+  const startRinging = () => {
+    setIsRinging(true);
+    
+    // 1. Toca o Som em Loop
     if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.volume = 1.0;
-      audioRef.current.play().catch(e => console.error("Erro ao tocar som:", e));
+        audioRef.current.currentTime = 0;
+        audioRef.current.volume = 1.0;
+        audioRef.current.play().catch(e => console.error("Audio blocked:", e));
     }
 
-    // B. Vibra o celular (200ms vibra, 100ms pausa, 200ms vibra)
+    // 2. Vibração Insistente
     if (navigator.vibrate) {
-      navigator.vibrate([500, 200, 500]);
+        // Vibra 1s, para 0.5s, repete (navegadores limitam o tempo total, então o loop ajuda)
+        navigator.vibrate([1000, 500, 1000, 500, 1000]); 
     }
 
-    // C. Notificação do Sistema (Aparece mesmo fora do navegador)
+    // 3. Notificação Push
     if ("Notification" in window && Notification.permission === "granted") {
-      try {
-        // Tenta criar notificação padrão (Desktop/iOS)
-        const options: any = {
-            body: "Um novo pedido acabou de entrar na fila. Toque para ver.",
-            icon: "/favicon.ico", 
-            vibrate: [500, 200, 500]
-        };
-        new Notification("📦 Nova Entrega Disponível!", options);
-      } catch (e) {
-        // Fallback para PWA Android (Chrome) que exige ServiceWorker e bloqueia new Notification()
-        console.warn("Erro ao criar notificação nativa, tentando via SW:", e);
-        if ('serviceWorker' in navigator) {
+        try {
             navigator.serviceWorker.getRegistration().then(reg => {
                 if (reg) {
-                    reg.showNotification("📦 Nova Entrega Disponível!", {
-                        body: "Um novo pedido acabou de entrar na fila. Toque para ver.",
+                    reg.showNotification("🔥 NOVA ENTREGA DISPONÍVEL!", {
+                        body: "Toque para aceitar a corrida.",
                         icon: "/favicon.ico",
-                        vibrate: [500, 200, 500]
+                        vibrate: [1000, 500, 1000],
+                        tag: 'new-order'
                     } as any);
+                } else {
+                     new Notification("🔥 NOVA ENTREGA DISPONÍVEL!");
                 }
-            }).catch(err => console.error("Erro ao notificar via SW:", err));
-        }
-      }
+            });
+        } catch (e) { console.log(e); }
     }
   };
 
-  // --- FIM DO SISTEMA DE NOTIFICAÇÃO ---
+  const stopRinging = () => {
+    setIsRinging(false);
+    if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+    }
+    if (navigator.vibrate) navigator.vibrate(0);
+  };
+
+  const enableDutyMode = () => {
+    // Pede permissão de notificação
+    if ("Notification" in window) {
+        Notification.requestPermission();
+    }
+    
+    // Toca um som mudo/curto para desbloquear o AudioContext do navegador
+    if (audioRef.current) {
+        const dummyPlay = audioRef.current.play();
+        if (dummyPlay !== undefined) {
+            dummyPlay.then(() => {
+                audioRef.current?.pause();
+                setIsSoundEnabled(true);
+            }).catch(error => {
+                console.error("Autoplay prevent", error);
+                alert("Por favor, habilite o som nas configurações do site.");
+            });
+        }
+    }
+  };
+
+  // --- FIM DO SISTEMA DE ALERTA ---
 
   // Lógica de GPS (Tracker) - Inicia quando há uma ordem ativa
   useEffect(() => {
@@ -135,13 +151,10 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         (position) => {
           const { latitude, longitude, heading, speed } = position.coords;
           
-          // 1. Atualiza estado local para o Mapa do Motoboy
           setCurrentLocation({ lat: latitude, lng: longitude });
           setGpsError(null);
 
-          // 2. Atualiza no Firebase para o Cliente/Admin
           const locationRef = doc(db, "tracking", activeOrder.id);
-          
           setDoc(locationRef, {
              lat: latitude,
              lng: longitude,
@@ -164,7 +177,6 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
       );
       setWatchId(id);
     } else {
-      // Se não tem ordem ativa, para o GPS
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         setWatchId(null);
@@ -178,25 +190,20 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     };
   }, [activeOrder?.id]);
 
-  // CORREÇÃO DO PISCA-PISCA E CONFLITO DOM
-
-  // Efeito 1: Inicialização e Destruição do Mapa
+  // Inicialização do Mapa
   useEffect(() => {
     if (!activeOrder) return;
 
-    // Aguarda um pequeno delay para garantir que o DOM renderizou a div #motoboy-map
     const timer = setTimeout(() => {
         const container = document.getElementById('motoboy-map');
         if (!container) return;
 
-        // Se já existe um mapa, não faz nada (evita recriar)
         if (mapRef.current) {
-            mapRef.current.invalidateSize(); // Garante que o tamanho está correto
+            mapRef.current.invalidateSize();
             return;
         }
 
         try {
-            console.log("Inicializando Mapa...");
             mapRef.current = L.map('motoboy-map', { 
                 zoomControl: false, 
                 attributionControl: false 
@@ -211,9 +218,8 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [activeOrder]); // Recria se o pedido mudar (para garantir DOM limpo)
+  }, [activeOrder]);
 
-  // Cleanup effect separado
   useEffect(() => {
       return () => {
         if (mapRef.current) {
@@ -224,7 +230,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
       }
   }, []);
 
-  // Efeito 2: Atualização do Marcador (Apenas move, não recria o mapa)
+  // Atualização do Marcador
   useEffect(() => {
     if (!activeOrder || !currentLocation || !mapRef.current) return;
 
@@ -240,22 +246,21 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     });
 
     if (markerRef.current) {
-        markerRef.current.setLatLng(latLng); // Apenas move
+        markerRef.current.setLatLng(latLng);
     } else {
-        markerRef.current = L.marker(latLng, { icon: motoIcon }).addTo(mapRef.current); // Cria se não existir
+        markerRef.current = L.marker(latLng, { icon: motoIcon }).addTo(mapRef.current);
     }
 
-    // Pan suave
     mapRef.current.panTo(latLng, { animate: true });
 
-  }, [currentLocation]); // Dependência: Localização (roda a cada update do GPS)
+  }, [currentLocation]);
 
 
   const handleStartDelivery = async (order: Order) => {
+    stopRinging(); // Para o som se estiver tocando
     if (window.confirm(`Iniciar rota para ${order.address}? Isso registrará o horário de saída.`)) {
         setActiveOrder(order);
         
-        // Atualiza o horário de saída no Firebase para métricas
         try {
             const orderRef = doc(db, "orders", order.id);
             await updateDoc(orderRef, {
@@ -283,14 +288,12 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         img.src = reader.result as string;
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            // FIX: Reduzir tamanho máximo e qualidade para evitar erro de limite do Firestore (1MB)
             const MAX_WIDTH = 600; 
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-            // Qualidade 0.5 gera arquivos bem menores (50kb-150kb)
             const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5);
             setPhotoPreview(compressedBase64);
         };
@@ -314,7 +317,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             status: 'delivered',
             deliveryProof: {
                 recipientName,
-                photo: photoPreview, // Agora otimizado
+                photo: photoPreview,
                 timestamp: new Date().toISOString()
             }
         });
@@ -328,26 +331,33 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         alert("Entrega Finalizada com Sucesso! 🚀");
     } catch (e: any) {
         console.error("Erro ao finalizar:", e);
-        // Mensagem de erro mais clara
-        if (e.code === 'permission-denied') {
-             alert("Erro de permissão. Tente relogar.");
-        } else if (e.toString().includes('exceeded')) {
-             alert("A foto ficou muito pesada. Tente tirar outra com menos detalhes.");
-        } else {
-             alert(`Erro ao salvar: ${e.message || 'Tente novamente.'}`);
-        }
+        alert("Erro ao finalizar. Tente novamente.");
     } finally {
         setIsSubmitting(false);
     }
   };
 
   return (
-    // FIX: min-h-[100dvh] previne o pisca-pisca branco em mobile quando a barra de endereço move
-    <div className="min-h-[100dvh] bg-slate-900 text-white pb-20 font-sans">
+    <div className="min-h-[100dvh] bg-slate-900 text-white pb-20 font-sans relative">
+      
+      {/* ALERTA DE NOVO PEDIDO (TELA CHEIA) */}
+      {isRinging && (
+        <div className="fixed inset-0 z-[200] bg-red-600 flex flex-col items-center justify-center p-8 animate-pulse text-center" onClick={stopRinging}>
+            <div className="bg-white p-6 rounded-full mb-8 shadow-2xl animate-bounce">
+                <BellRing className="w-20 h-20 text-red-600" />
+            </div>
+            <h1 className="text-4xl font-black text-white mb-4">NOVO PEDIDO!</h1>
+            <p className="text-xl text-red-100 font-bold mb-12">Toque na tela para aceitar</p>
+            <button onClick={stopRinging} className="bg-white text-red-600 px-12 py-6 rounded-3xl font-black text-2xl shadow-xl active:scale-95 transition-transform">
+                VER AGORA
+            </button>
+        </div>
+      )}
+
       {/* Header Fixo */}
       <div className="bg-slate-800 p-6 shadow-lg flex justify-between items-center sticky top-0 z-50 border-b border-slate-700">
         <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-full animate-pulse">
+            <div className={`p-2 rounded-full ${isSoundEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`}>
                 <Bike className="text-white" size={24} />
             </div>
             <div>
@@ -356,22 +366,33 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
             </div>
         </div>
         <div className="flex items-center gap-2">
-           {!notificationsEnabled && (
-             <button onClick={enableNotifications} className="bg-blue-500/20 text-blue-400 p-2 rounded-xl hover:bg-blue-500 hover:text-white transition-colors animate-pulse">
-               <BellRing size={20} />
-             </button>
-           )}
            <button onClick={logout} className="bg-red-500/20 text-red-400 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
               <LogOut size={20} />
            </button>
         </div>
       </div>
       
-      {/* Botão de Aviso de Som */}
-      {!notificationsEnabled && (
-        <div onClick={enableNotifications} className="bg-blue-600 text-white text-xs font-bold p-3 text-center cursor-pointer hover:bg-blue-700 transition-colors">
-          ⚠️ Toque aqui para ativar o SOM de alerta de novos pedidos
+      {/* Botão de Plantão (Ativar Som) */}
+      {!isSoundEnabled && (
+        <div className="p-4">
+            <button onClick={enableDutyMode} className="w-full bg-blue-600 hover:bg-blue-500 text-white p-6 rounded-3xl shadow-xl flex items-center justify-center gap-4 group transition-all">
+                <div className="bg-white/20 p-4 rounded-full group-hover:scale-110 transition-transform">
+                    <Play size={32} className="fill-white" />
+                </div>
+                <div className="text-left">
+                    <h2 className="text-xl font-black uppercase">Entrar em Plantão</h2>
+                    <p className="text-sm text-blue-100">Toque para ativar o som de chamados</p>
+                </div>
+            </button>
         </div>
+      )}
+
+      {isSoundEnabled && !activeOrder && (
+          <div className="px-4 py-2">
+              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-3 rounded-xl text-center text-xs font-bold uppercase tracking-widest animate-pulse">
+                 🟢 Plantão Ativo • Aguardando Chamados
+              </div>
+          </div>
       )}
 
       <div className="p-4 space-y-6 max-w-lg mx-auto">
@@ -390,12 +411,9 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                         </button>
                     </div>
 
-                    {/* CORREÇÃO DO MAPA: Estrutura relativa para evitar conflito DOM entre React e Leaflet */}
                     <div className="relative w-full h-80 mb-6 rounded-[2rem] border-4 border-emerald-500/30 shadow-inner overflow-hidden bg-emerald-800/50">
-                        {/* 1. O Mapa fica sozinho nesta div (sem children do React) */}
                         <div id="motoboy-map" className="w-full h-full z-0" />
                         
-                        {/* 2. Overlays ficam FORA da div do mapa, mas posicionados em cima via CSS absolute */}
                         {!currentLocation && !gpsError && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-100 bg-emerald-900/80 z-10 backdrop-blur-sm">
                                 <Loader2 className="animate-spin mb-2 w-8 h-8" /> 
