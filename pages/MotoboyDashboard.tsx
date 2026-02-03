@@ -153,75 +153,73 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
     };
   }, [activeOrder?.id]);
 
-  // Inicialização e Atualização do Mapa do Motoboy
+  // CORREÇÃO DO PISCA-PISCA: Separação de Efeitos
+
+  // Efeito 1: Inicialização e Destruição do Mapa (Apenas 1 vez por pedido)
   useEffect(() => {
-    // 1. Limpeza se não houver ordem ativa
-    if (!activeOrder) {
+    if (!activeOrder) return;
+
+    const container = document.getElementById('motoboy-map');
+    if (!container) return;
+
+    // Se já existe um mapa, não faz nada (evita recriar)
+    if (mapRef.current) return;
+
+    // Limpeza de segurança para Leaflet
+    const containerAny = container as any;
+    if (containerAny._leaflet_id) {
+        containerAny._leaflet_id = null;
+    }
+
+    try {
+        console.log("Inicializando Mapa...");
+        mapRef.current = L.map('motoboy-map', { 
+            zoomControl: false, 
+            attributionControl: false 
+        }).setView([-24.9555, -53.4552], 15);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(mapRef.current);
+    } catch (e) {
+        console.error("Erro ao iniciar mapa:", e);
+    }
+
+    // Cleanup: Destrói o mapa apenas quando sair do pedido ativo (unmount ou troca de activeOrder)
+    return () => {
         if (mapRef.current) {
             mapRef.current.remove();
             mapRef.current = null;
             markerRef.current = null;
         }
-        return;
-    }
-
-    const container = document.getElementById('motoboy-map');
-
-    // 2. Inicializa o mapa (com proteção contra reinicialização)
-    if (activeOrder && !mapRef.current && container) {
-        // CORREÇÃO CRÍTICA: Verifica se o Leaflet já marcou este container
-        // Isso previne a tela branca/crash ao sair e voltar da página
-        const containerAny = container as any;
-        if (containerAny._leaflet_id) {
-            containerAny._leaflet_id = null; // Reseta o ID do leaflet para permitir nova montagem
-        }
-
-        try {
-          mapRef.current = L.map('motoboy-map', { 
-            zoomControl: false, 
-            attributionControl: false 
-          }).setView([-24.9555, -53.4552], 15);
-          
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-              maxZoom: 20
-          }).addTo(mapRef.current);
-        } catch (e) {
-          console.error("Erro ao iniciar mapa:", e);
-        }
-    }
-
-    // 3. Atualiza marcador
-    if (activeOrder && currentLocation && mapRef.current) {
-        const latLng = [currentLocation.lat, currentLocation.lng];
-
-        // Mesmo ícone do cliente para consistência
-        const motoIcon = L.divIcon({
-            html: `<div style="background-color: #ef4444; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 3px solid white;">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
-                   </div>`,
-            className: 'custom-div-icon',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
-
-        if (markerRef.current) {
-            markerRef.current.setLatLng(latLng);
-        } else {
-            markerRef.current = L.marker(latLng, { icon: motoIcon }).addTo(mapRef.current);
-        }
-
-        mapRef.current.setView(latLng, 17, { animate: true });
-    }
-
-    // Cleanup function para quando o componente desmontar (sair da tela)
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        markerRef.current = null;
-      }
     };
-  }, [activeOrder, currentLocation]);
+  }, [activeOrder?.id]); // Dependência: Apenas ID do pedido
+
+  // Efeito 2: Atualização do Marcador (Apenas move, não recria o mapa)
+  useEffect(() => {
+    if (!activeOrder || !currentLocation || !mapRef.current) return;
+
+    const latLng = [currentLocation.lat, currentLocation.lng];
+
+    const motoIcon = L.divIcon({
+        html: `<div style="background-color: #ef4444; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 3px solid white;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+                </div>`,
+        className: 'custom-div-icon',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+    });
+
+    if (markerRef.current) {
+        markerRef.current.setLatLng(latLng); // Apenas move
+    } else {
+        markerRef.current = L.marker(latLng, { icon: motoIcon }).addTo(mapRef.current); // Cria se não existir
+    }
+
+    // Pan suave
+    mapRef.current.panTo(latLng, { animate: true });
+
+  }, [currentLocation]); // Dependência: Localização (roda a cada update do GPS)
 
 
   const handleStartDelivery = async (order: Order) => {
