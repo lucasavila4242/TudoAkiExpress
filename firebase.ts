@@ -1,5 +1,6 @@
+
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBslUdye9sN5EWF7nUCAQXjAlXparPT2og",
@@ -15,4 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Exporta o Banco de Dados (Firestore)
-export const db = getFirestore(app);
+// experimentalForceLongPolling: true resolve erros de "Could not reach Cloud Firestore backend" em algumas redes
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
