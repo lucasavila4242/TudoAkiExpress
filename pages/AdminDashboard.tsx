@@ -24,7 +24,9 @@ import {
   Image as ImageIcon, 
   Timer, 
   Smartphone,
-  Loader2
+  Loader2,
+  X,
+  Maximize2
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
@@ -48,6 +50,9 @@ const AdminDashboard = ({
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'all'>('all');
   const [proofModal, setProofModal] = useState<Order | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  
+  // Novo estado para o Zoom
+  const [isZoomed, setIsZoomed] = useState(false);
 
   // Sound Refs
   const notificationAudio = useRef<HTMLAudioElement | null>(null);
@@ -382,6 +387,20 @@ const AdminDashboard = ({
         </div>
       </div>
 
+      {/* Modal de Zoom da Imagem */}
+      {isZoomed && proofModal?.deliveryProof?.photo && (
+        <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setIsZoomed(false)}>
+            <button className="absolute top-4 right-4 text-white/80 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors" onClick={() => setIsZoomed(false)}>
+                <X size={32} />
+            </button>
+            <img 
+                src={proofModal.deliveryProof.photo} 
+                className="max-w-full max-h-full object-contain rounded-md" 
+                onClick={(e) => e.stopPropagation()} 
+            />
+        </div>
+      )}
+
       {/* Modal de Comprovante DETALHADO */}
       {proofModal && proofModal.deliveryProof && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in" onClick={() => setProofModal(null)}>
@@ -391,7 +410,7 @@ const AdminDashboard = ({
                         <h3 className="text-xl font-black text-blue-900">Entrega Finalizada</h3>
                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Protocolo: {proofModal.id}</p>
                     </div>
-                    <button onClick={() => setProofModal(null)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors"><CheckCircle2 size={20} /></button>
+                    <button onClick={() => setProofModal(null)} className="p-2 bg-gray-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors"><X size={20} /></button>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-2xl mb-6 border border-gray-100">
@@ -415,10 +434,13 @@ const AdminDashboard = ({
                      </div>
                 </div>
 
-                <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden mb-6 border-2 border-dashed border-gray-200 relative group">
+                <div 
+                    className="aspect-video bg-gray-100 rounded-2xl overflow-hidden mb-6 border-2 border-dashed border-gray-200 relative group cursor-pointer"
+                    onClick={() => setIsZoomed(true)}
+                >
                     <img src={proofModal.deliveryProof.photo} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <p className="text-white font-bold text-xs flex items-center gap-2"><ImageIcon size={16} /> Foto do Local</p>
+                        <p className="text-white font-bold text-xs flex items-center gap-2"><Maximize2 size={16} /> Ampliar Foto</p>
                     </div>
                 </div>
 
