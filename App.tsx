@@ -46,6 +46,82 @@ import TrackingPage from './pages/TrackingPage';
 // Components
 import AuthModal from './components/AuthModal';
 
+// --- CONFIGURAÇÃO DE NOTIFICAÇÃO (DISCORD) ---
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1469091680664949001/_ZCIItZjlOORU7cF2hpsNYcaqIs0apUXG5rZu8tB03oaMzNDtF4o6NrbMCN6leOq54Ar"; 
+
+// Função auxiliar para enviar notificação
+const sendOrderToDiscord = async (order: Order) => {
+  if (!DISCORD_WEBHOOK_URL) return;
+
+  try {
+    const itemsList = order.items
+      .map(item => `📦 **${item.quantity}x** ${item.name} (R$ ${item.price.toFixed(2)})`)
+      .join('\n');
+
+    // Tenta limpar o telefone para criar link do WhatsApp se possível
+    const cleanPhone = order.customerWhatsapp ? order.customerWhatsapp.replace(/\D/g, '') : '';
+    const whatsappDisplay = order.customerWhatsapp || 'Não informado';
+    
+    // Formata data
+    const dateStr = new Date().toLocaleString('pt-BR', { 
+      day: '2-digit', month: '2-digit', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit' 
+    });
+
+    const embed = {
+      title: "🚀 Nova Venda Confirmada!",
+      description: `Um novo pedido acaba de ser registrado no sistema.\n**ID do Pedido:** \`${order.id}\``,
+      color: 5763719, // Verde (#57F287)
+      fields: [
+        {
+          name: "👤 Dados do Cliente",
+          value: `**Nome:** ${order.customerName || 'Cliente Visitante'}\n**WhatsApp:** ${whatsappDisplay}`,
+          inline: true
+        },
+        {
+          name: "💰 Financeiro",
+          value: `**Total:** R$ ${order.total.toFixed(2)}\n**Pagamento:** ${order.paymentMethod.toUpperCase()}`,
+          inline: true
+        },
+        {
+          name: "📍 Local de Entrega",
+          value: `\`\`\`${order.address}\`\`\``, // Bloco de código para destaque
+          inline: false
+        },
+        {
+          name: "🛒 Itens do Carrinho",
+          value: itemsList.substring(0, 1024) || "Nenhum item listado",
+          inline: false
+        },
+        {
+          name: "📅 Registrado em",
+          value: dateStr,
+          inline: true
+        }
+      ],
+      footer: {
+        text: "TudoAki Express • Sistema Automático",
+        icon_url: "https://cdn-icons-png.flaticon.com/512/3081/3081559.png"
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: "TudoAki Bot",
+        avatar_url: "https://cdn-icons-png.flaticon.com/512/3081/3081559.png",
+        content: "🚨 **ATENÇÃO EQUIPE:** Nova venda realizada! Verifique o painel para despachar.", 
+        embeds: [embed]
+      })
+    });
+    console.log("Notificação enviada para o Discord!");
+  } catch (error) {
+    console.error("Erro ao enviar notificação Discord:", error);
+  }
+};
+
 // --- COMPONENTS AUXILIARES ---
 
 const Navbar = ({ 
@@ -352,17 +428,9 @@ export default function App() {
   const [showRecoveryNudge, setShowRecoveryNudge] = useState(false);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   
-  // CORREÇÃO TELA BRANCA: Inicialização protegida do estado do usuário
   const [user, setUser] = useState<UserType | null>(() => {
-    try {
-      const saved = localStorage.getItem('aki_current_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      console.error("Erro critico ao recuperar sessão:", e);
-      // Se houver erro no JSON, limpa o storage para evitar loop de erro
-      localStorage.removeItem('aki_current_user');
-      return null;
-    }
+    const saved = localStorage.getItem('aki_current_user');
+    return saved ? JSON.parse(saved) : null;
   });
 
   // FIREBASE LISTENER (PEDIDOS)
@@ -489,6 +557,9 @@ export default function App() {
         // FIX CRÍTICO: Sempre usar setDoc com o ID do objeto. 
         // Isso garante que DocumentID == OrderID, permitindo atualizações futuras.
         await setDoc(doc(db, "orders", newOrderData.id), newOrderData);
+        
+        // 🚀 ENVIA NOTIFICAÇÃO PARA O DISCORD (Se URL configurada)
+        await sendOrderToDiscord(newOrderData);
     } catch (e) { console.error("Erro save order:", e); }
     
     updateDB({ points: user.points - pointsSpent + pointsEarned, lifetimePoints: user.lifetimePoints + pointsEarned, persistedCart: [], lastCartUpdate: undefined }, `Finalizou um pedido`, 'order');

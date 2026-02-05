@@ -167,7 +167,8 @@ const Home = ({
                   </div>
                 </div>
 
-                <div className="absolute left-8 bottom-24 bg-blue-900 p-5 rounded-3xl shadow-2xl border border-blue-800 animate-pulse-subtle z-20 max-w-[200px]">
+                {/* Widget Vendas Hoje - Movido para o TOPO DIREITO (abaixo do status) para liberar a parte inferior */}
+                <div className="absolute right-8 top-44 bg-blue-900 p-5 rounded-3xl shadow-2xl border border-blue-800 animate-pulse-subtle z-20 max-w-[200px]">
                    <div className="flex items-center gap-3">
                     <div className="bg-red-50 p-2 rounded-xl shrink-0">
                       <ShoppingBag className="h-6 w-6 text-white" />
