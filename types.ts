@@ -1,4 +1,19 @@
 
+export interface ReviewMedia {
+  type: 'image' | 'video';
+  url: string;
+}
+
+export interface Review {
+  id: string;
+  userName: string;
+  userAvatar: string;
+  rating: number;
+  date: string;
+  text: string;
+  media?: ReviewMedia[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -17,6 +32,7 @@ export interface Product {
   tags: string[];
   upsellIds?: string[];
   benefits?: string[];
+  reviews?: Review[]; // Novo campo para avaliações detalhadas
 }
 
 export interface CartItem extends Product {
@@ -80,6 +96,7 @@ export interface User {
   activityLog: UserActivity[];
   lastCartUpdate?: string; 
   createdAt?: string; 
+  _sessionExpiry?: number;
 }
 
 export interface OrderLead {

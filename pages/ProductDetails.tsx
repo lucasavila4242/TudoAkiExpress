@@ -17,7 +17,8 @@ import {
   ExternalLink,
   ChevronDown,
   Zap,
-  ShoppingCart
+  ShoppingCart,
+  Play
 } from 'lucide-react';
 import { PRODUCTS } from '../constants';
 import { Product } from '../types';
@@ -33,7 +34,7 @@ const ProductDetails = ({
 }) => {
   const { id } = useParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'reviews'>('description');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const product = useMemo(() => PRODUCTS.find(p => p.id === id), [id]);
@@ -52,6 +53,14 @@ const ProductDetails = ({
   const isOutOfStock = product.stock === 0;
   const isWishlisted = wishlist.includes(product.id);
   const productImages = product.images && product.images.length > 0 ? product.images : [product.image];
+
+  // Helper function to render text with bold formatting
+  const formatText = (text: string) => {
+    const parts = text.split('**');
+    return parts.map((part, index) =>
+      index % 2 === 1 ? <strong key={index} className="font-black text-blue-900">{part}</strong> : part
+    );
+  };
 
   return (
     <div className="bg-white min-h-screen pb-20">
@@ -181,33 +190,115 @@ const ProductDetails = ({
             <div className="flex gap-12 border-b border-gray-100 mb-12 overflow-x-auto custom-scrollbar whitespace-nowrap">
               <button
                 onClick={() => setActiveTab('description')}
-                className={`pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'description' ? 'text-blue-900' : 'text-gray-400'}`}
+                className={`pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'description' ? 'text-blue-900' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 Descrição Completa
                 {activeTab === 'description' && <div className="absolute bottom-0 left-0 w-full h-1 bg-red-500 rounded-full" />}
               </button>
+              
+              <button
+                onClick={() => setActiveTab('reviews')}
+                className={`pb-4 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'reviews' ? 'text-blue-900' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                Avaliações de Clientes ({product.reviewsCount})
+                {activeTab === 'reviews' && <div className="absolute bottom-0 left-0 w-full h-1 bg-red-500 rounded-full" />}
+              </button>
             </div>
 
-            <div className="prose prose-blue max-w-none">
-              <div className="space-y-8">
-                <h3 className="text-3xl font-black text-blue-900 leading-tight">O que torna este produto único?</h3>
-                <div className="text-gray-600 leading-relaxed text-lg font-medium whitespace-pre-line">
-                  {product.description}
-                </div>
-                
-                {/* Benefícios Dinâmicos */}
-                {product.benefits && product.benefits.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8">
-                    {product.benefits.map((benefit, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-blue-50/50 p-5 rounded-2xl border border-blue-100 shadow-sm transition-transform hover:scale-[1.02]">
-                        <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0" />
-                        <span className="text-blue-900 font-bold text-sm">{benefit}</span>
-                      </div>
-                    ))}
+            {activeTab === 'description' && (
+              <div className="prose prose-blue max-w-none animate-in fade-in duration-500">
+                <div className="space-y-8">
+                  <h3 className="text-3xl font-black text-blue-900 leading-tight">O que torna este produto único?</h3>
+                  <div className="text-gray-600 leading-relaxed text-lg font-medium whitespace-pre-line">
+                    {formatText(product.description)}
                   </div>
+                  
+                  {/* Benefícios Dinâmicos */}
+                  {product.benefits && product.benefits.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8">
+                      {product.benefits.map((benefit, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-blue-50/50 p-5 rounded-2xl border border-blue-100 shadow-sm transition-transform hover:scale-[1.02]">
+                          <CheckCircle2 className="h-6 w-6 text-emerald-500 flex-shrink-0" />
+                          <span className="text-blue-900 font-bold text-sm">{benefit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'reviews' && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-black text-blue-900">Galeria de Clientes</h3>
+                    <div className="flex items-center gap-2">
+                         <span className="text-4xl font-black text-blue-900">{product.rating}</span>
+                         <div className="flex flex-col">
+                             <div className="flex">
+                                {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className={`h-4 w-4 ${i < Math.floor(product.rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-200 fill-gray-200'}`} />
+                                ))}
+                             </div>
+                             <span className="text-xs text-gray-400 font-bold">{product.reviewsCount} avaliações</span>
+                         </div>
+                    </div>
+                </div>
+
+                {product.reviews && product.reviews.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-8">
+                        {product.reviews.map(review => (
+                            <div key={review.id} className="bg-gray-50 rounded-[2rem] p-8 border border-gray-100">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <img src={review.userAvatar} alt={review.userName} className="w-12 h-12 rounded-full border-2 border-white shadow-sm" />
+                                    <div>
+                                        <p className="font-black text-blue-900">{review.userName}</p>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} className={`h-3 w-3 ${i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300 fill-gray-300'}`} />
+                                                ))}
+                                            </div>
+                                            <span className="text-[10px] text-gray-400 font-bold">{new Date(review.date).toLocaleDateString('pt-BR')}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-gray-600 font-medium mb-6 leading-relaxed">"{review.text}"</p>
+                                
+                                {review.media && review.media.length > 0 && (
+                                    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                                        {review.media.map((media, idx) => (
+                                            <div key={idx} className="relative flex-shrink-0 w-48 aspect-video rounded-xl overflow-hidden border border-gray-200 bg-black group">
+                                                {media.type === 'video' ? (
+                                                    <video 
+                                                        src={media.url} 
+                                                        controls 
+                                                        className="w-full h-full object-cover"
+                                                        poster={review.media?.find(m => m.type === 'image')?.url} // Tenta usar uma imagem como poster se houver
+                                                    />
+                                                ) : (
+                                                    <img src={media.url} alt="Review attachment" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                )}
+                                                {media.type === 'video' && (
+                                                    <div className="absolute top-2 right-2 bg-black/50 p-1.5 rounded-full backdrop-blur-sm pointer-events-none">
+                                                        <Play className="w-3 h-3 text-white fill-white" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                        <MessageCircle className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                        <p className="text-gray-500 font-medium">Este produto ainda não possui avaliações com mídia.</p>
+                    </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
