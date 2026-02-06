@@ -128,6 +128,81 @@ export const PRODUCTS: Product[] = [
     ]
   },
   {
+    id: 'trimmer-dragon-01',
+    name: 'Máquina de Cortar Cabelo e Barba Dragão Portátil Elétrico',
+    description: '🐉 **Estilo e Precisão na Palma da Mão!**\n\nEste **Barbeador Profissional Sem Fio** é a ferramenta definitiva para quem busca qualidade e estilo. Com design vintage em metal e estampa detalhada, ele não é apenas bonito, mas extremamente funcional.\n\n**CARACTERÍSTICAS PRINCIPAIS:**\n\n**Liberdade Sem Fio:**\nEste modelo é sem fio e possui bateria recarregável via USB. Tenha todo o conforto de cortar cabelos e fazer a barba sem cabos atrapalhando.\n\n**Bateria de Alta Duração:**\nPossui uma bateria de 1200mAh que garante uma autonomia de **2 horas de uso contínuo**. Recarga completa em apenas 2 horas.\n\n**Potência Profissional:**\nPerfeita para profissionais e uso doméstico, possui motor potente de 5W. Aguenta o trabalho duro do dia a dia. Ideal para pezinho, desenhos, disfarce e acabamentos. O que manda aqui é sua habilidade!\n\n**Design Premium:**\nCorpo todo em metal com acabamento texturizado (Dragão/Buda), perfeito para barbeiros que querem se destacar ou para ter uma ferramenta diferenciada em casa.\n\n**Custo-Benefício:**\nEntrega qualidade superior e mais funcionalidades que muitas marcas famosas que custam o triplo do preço.\n\n**ESPECIFICAÇÕES:**\n\n✅ **Potência:** 5W\n✅ **Tamanho:** 14,8 x 2,5 cm\n✅ **Bateria:** 1200mAh (Recarregável)\n✅ **Material:** Metal e Plástico ABS\n\n**CONTEÚDO DA EMBALAGEM:**\n\n📦 1 Máquina de Barbear\n📦 4 Pentes Guia (1.5mm, 2mm, 3mm, 4mm)\n📦 1 Cabo USB\n📦 1 Escovinha de Limpeza',
+    price: 52.99,
+    originalPrice: 99.90,
+    image: 'https://iili.io/fbq0joJ.md.png',
+    images: [
+      'https://iili.io/fbq0joJ.md.png',
+      'https://iili.io/fbq1wbe.md.png',
+      'https://iili.io/fbqGZSp.png',
+      'https://iili.io/fbqMkss.md.png'
+    ],
+    category: 'Saúde',
+    rating: 4.9,
+    reviewsCount: 156,
+    stock: 40,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: false,
+    tags: ['Barba', 'Cabelo', 'Dragão', 'Profissional'],
+    upsellIds: [],
+    benefits: [
+      "Sem Fio & Recarregável",
+      "Design Metálico Premium",
+      "4 Pentes Inclusos",
+      "Bateria 1200mAh",
+      "Motor Potente 5W",
+      "Alta Precisão"
+    ],
+    reviews: [
+      {
+        id: 'rev-trim-01',
+        userName: 'Ricardo Bastos',
+        userAvatar: 'https://i.pravatar.cc/150?img=12',
+        rating: 5,
+        date: '2024-03-15T14:30:00Z',
+        text: 'Acabamento top! A máquina é pesadinha, passa sensação de qualidade. Corta muito bem, usei pra fazer a barba e o acabamento do cabelo.',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-lsxja3fpi971c7.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-lsxja3fpjnrhe1.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-lsxja3fpl2bx2c.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-lsxja3fpmgwd28.webp' }
+        ]
+      },
+      {
+        id: 'rev-trim-02',
+        userName: 'Lucas Ferreira',
+        userAvatar: 'https://i.pravatar.cc/150?img=60',
+        rating: 5,
+        date: '2024-03-14T09:15:00Z',
+        text: 'Muito forte! Surpreendeu pelo tamanho. O desenho do dragão é muito bonito. Vídeo mostrando ela funcionando.',
+        media: [
+          { type: 'video', url: 'https://down-zl-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6kfko-m0xchzd0sgo67b.16000051727976940.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m0xch9kwingg5c.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m0xch9h0oc7rc7.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m0xch9h0oc4mf6.webp' }
+        ]
+      },
+      {
+        id: 'rev-trim-03',
+        userName: 'Gabriel Silva',
+        userAvatar: 'https://i.pravatar.cc/150?img=33',
+        rating: 5,
+        date: '2024-03-12T18:20:00Z',
+        text: 'Chegou rápido. Pelo preço vale muito a pena, faz o pezinho perfeito. A bateria dura bastante.',
+        media: [
+          { type: 'video', url: 'https://down-zl-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6kfkp-m5kej817hvtcf9.16000051738089615.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m5kegsgxo9cg13.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m5kegsgxpnwwb6.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m5kegsgxr2hc04.webp' }
+        ]
+      }
+    ]
+  },
+  {
     id: 'pressure-washer-01',
     name: 'Lavadora de Alta Pressão Portátil Sem Fio 48V Turbo',
     description: '🧼 **Lavadora de Alta Pressão Portátil Sem Fio 48V – Potente e Prática**\n\nCansado de lavar carro ou moto com balde e mangueira?\nA lavadora portátil de alta pressão sem fio 48V é a solução ideal para uma limpeza rápida, eficiente e sem esforço, em qualquer lugar.\n\n🚀 **Alta Potência & Jato Forte**\n\n**Motor de alto desempenho 48V**\nJato de água forte para remover sujeira pesada\nIdeal para carro, moto, bicicleta, quintal, paredes e pisos\n\n🔋 **Sem Fio & Super Portátil**\n\nFunciona com bateria recarregável\nLeve, compacta e fácil de transportar\nUse onde quiser, sem precisar de tomada\n\n🔄 **Múltiplos Acessórios Inclusos**\n\nBicos ajustáveis para diferentes tipos de jato\nMangueira com filtro (pode puxar água de balde, galão ou tanque)\nGarrafa para sabão / espuma\nIdeal para lavagem e manutenção do dia a dia\n\n🧠 **Fácil de Usar**\n\nConecte a mangueira na fonte de água\nEncaixe a bateria\nAperte o gatilho e comece a limpeza\nSem instalação complicada!\n\n📦 **Conteúdo da Embalagem**\n\n✔ 1x Lavadora de alta pressão portátil\n✔ 2x Baterias recarregáveis\n✔ 1x Mangueira com filtro\n✔ 1x Garrafa para sabão\n✔ Bicos e conectores\n✔ Maleta para transporte\n\n✅ **Vantagens**\n\n✔ Alta pressão\n✔ Sem fio\n✔ Economia de água\n✔ Fácil de transportar\n✔ Uso doméstico e automotivo\n\n📌 Produto novo, bem embalado e enviado com segurança',
