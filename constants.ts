@@ -128,6 +128,132 @@ export const PRODUCTS: Product[] = [
     ]
   },
   {
+    id: 'charger-20w-apple-01',
+    name: 'Fonte Carregador USB-C 20W Apple Original',
+    description: '⚡ **Recarga Turbo para seu iPhone!**\n\nO adaptador de energia USB-C de 20W Apple oferece recarga rápida e eficiente. Ideal para usar em casa, no trabalho ou onde você estiver.\n\n📱 **Compatibilidade & Performance:**\nConecte ao iPhone 8 ou posterior para recarga rápida: **50% de bateria em aproximadamente 35 minutos**.\nTambém compatível com iPad Pro e iPad Air para desempenho máximo. Compatível com qualquer aparelho com porta USB-C.\n\n✨ **Destaques do Produto:**\n\n✅ **ORIGINAL APPLE**\n✅ **SELO ANATEL**\n✅ **Potência 20W Real**\n✅ **Produto Novo e Lacrado**\n✅ **Conexão USB-C**\n\n📦 **Conteúdo da Caixa:**\n1x Carregador de Parede USB-C de 20W\n1x Manual do Usuário\n\n⚠️ *Cabo vendido separadamente.*',
+    price: 35.90,
+    originalPrice: 119.00,
+    image: 'https://iili.io/fmIuLs2.png',
+    images: [
+      'https://iili.io/fmIuLs2.png',
+      'https://iili.io/fmI5dKB.png',
+      'https://iili.io/fmIGKHQ.png'
+    ],
+    category: 'Acessórios',
+    rating: 4.9,
+    reviewsCount: 142,
+    stock: 80,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: false,
+    tags: ['Apple', 'Carregador', 'iPhone', 'Turbo', '20W'],
+    upsellIds: ['cable-typec-lightning-01'],
+    benefits: [
+      "Original Apple com Selo Anatel",
+      "Carregamento Turbo 20W",
+      "50% de bateria em 35 min",
+      "Compatível com iPhone e iPad",
+      "Compacto e Seguro"
+    ],
+    reviews: [
+      {
+        id: 'rev-charger-01',
+        userName: 'Lucas Martins',
+        userAvatar: 'https://i.pravatar.cc/150?img=59',
+        rating: 5,
+        date: '2024-03-29T10:00:00Z',
+        text: 'Realmente original e carrega muito rápido. O iPhone reconheceu na hora. Vídeo mostra ele lacrado.',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v65g-miu85qxqx7up51.16000051767014381.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-miu84vcw36kic2.webp' },
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v65g-mjimdtjbkvluf0.16000051768491107.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mjimd83kjc3n94.webp' }
+        ]
+      },
+      {
+        id: 'rev-charger-02',
+        userName: 'Beatriz Silva',
+        userAvatar: 'https://i.pravatar.cc/150?img=49',
+        rating: 5,
+        date: '2024-03-28T15:30:00Z',
+        text: 'Chegou certinho, bem embalado. Funciona perfeitamente no meu iPhone 11.',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mjlhp0k5w1dt29.webp' }
+        ]
+      },
+      {
+        id: 'rev-charger-03',
+        userName: 'Rafael Costa',
+        userAvatar: 'https://i.pravatar.cc/150?img=11',
+        rating: 5,
+        date: '2024-03-25T09:15:00Z',
+        text: 'Qualidade top! Esquenta muito pouco e carrega voando. Recomendo.',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mk37re1na8e9dc.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mjluvthfxw5eb1.webp' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'cable-typec-lightning-01',
+    name: 'Cabo Adaptador Tipo C para Lightning iPhone',
+    description: '🔌 **Cabo Carregador Original Para iPhone (APENAS O CABO)**\n\nCabo Tipo C de 1 metro para o seu iPhone, iPad ou iPod com conector Lightning.\n\nO cabo Tipo C conecta o seu dispositivo com conector Lightning à porta Tipo C do seu computador ou carregador de parede. Com ele você sincroniza dados e carrega a bateria com rapidez e segurança.\n\n📱 **Modelos Compatíveis de iPhone:**\n\n*   iPhone 5 / 5S / 5C / SE\n*   iPhone 6 / 6 Plus / 6S / 6S Plus\n*   iPhone 7 / 7 Plus\n*   iPhone 8 / 8 Plus\n*   iPhone X / XS / XS Max / XR\n*   iPhone 11 (todas as séries)\n*   iPhone 12 (todas as séries)\n\n💻 **Compatível também com:**\n*   iPad Air / Mini / Pro\n*   iPod Touch (5ª a 7ª geração)\n\n⚠️ **Nota:** Este item contém apenas o cabo. A fonte (tomada) não está inclusa.',
+    price: 38.90,
+    originalPrice: 69.90,
+    image: 'https://iili.io/fmIKzxe.png',
+    images: [
+      'https://iili.io/fmIKzxe.png',
+      'https://iili.io/fmIK1zF.png',
+      'https://iili.io/fmIqDUx.png'
+    ],
+    category: 'Acessórios',
+    rating: 4.8,
+    reviewsCount: 112,
+    stock: 100,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: false,
+    tags: ['iPhone', 'Cabo', 'Carregador', 'Apple'],
+    upsellIds: [],
+    benefits: [
+      "Conector Lightning Original",
+      "Carregamento Rápido",
+      "Sincronização de Dados",
+      "Alta Durabilidade",
+      "Compatível com toda linha Apple"
+    ],
+    reviews: [
+      {
+        id: 'rev-cable-01',
+        userName: 'Mariana Souza',
+        userAvatar: 'https://i.pravatar.cc/150?img=32',
+        rating: 5,
+        date: '2024-03-28T14:00:00Z',
+        text: 'O cabo é excelente, carrega super rápido o meu iPhone 11. Material parece bem resistente, igual ao original.',
+        media: [
+          { type: 'video', url: 'https://down-cvs-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6kfkr-mao6akyiihvd08.16000051749217577.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-mao3i1f38dfd2e.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-mao3i1f39rzt97.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-mao3i1f3b6k959.webp' }
+        ]
+      },
+      {
+        id: 'rev-cable-02',
+        userName: 'Paulo Ferreira',
+        userAvatar: 'https://i.pravatar.cc/150?img=11',
+        rating: 5,
+        date: '2024-03-25T10:30:00Z',
+        text: 'Chegou bem embalado e funcionando perfeitamente. Ótimo custo benefício, recomendo!',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mhkfn2fraltt4f.webp' },
+          { type: 'video', url: 'https://down-cvs-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v65f-mhkfofc6ud4ydd.16000051764242421.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mhkfn2fs9q0y51.webp' }
+        ]
+      }
+    ]
+  },
+  {
     id: 'ps4-controller-01',
     name: 'Controle PS4 Sem Fio Bluetooth',
     description: '🎮 **Controle Sem Fio para PlayStation 4 – Wireless com LED**\n\nEleve sua experiência nos jogos com o Controle Sem Fio compatível com PlayStation 4, desenvolvido para oferecer alta precisão, conforto e total liberdade de movimentos. Ideal para quem busca desempenho gamer com excelente custo-benefício.\n\n✨ **Qualidade Premium - Primeira Linha:**\nEste é um produto paralelo de **Primeira Linha**, fabricado com componentes de alta qualidade. Não possui diferença perceptível do original e garante **Zero Delay** (sem atrasos) nos comandos.\n\n🌟 **Principais Benefícios:**\n\n✅ **Controle sem fio (Wireless) com LED**\n✅ **Alta precisão nos comandos**\n✅ **Vibração realista** para maior imersão (DualShock 4)\n✅ **Touch Pad multi-touch clicável**\n✅ **Sensor de seis eixos** para movimentos mais naturais\n✅ **Design ergonômico e confortável**\n✅ **Bateria recarregável** com uso contínuo durante o carregamento\n\n🔧 **Características Técnicas:**\n\n*   **Tecnologia:** DualShock 4\n*   **Conectividade:** Wireless / USB\n*   **Compatibilidade:** PlayStation 4 / PC / Android / Mobile\n*   **Plug & Play:** Sim\n*   **Dimensões:** 16 cm x 11 cm x 6 cm\n*   **Cabo USB:** 1,80 m incluso\n\n📦 **Itens Inclusos:**\n1x Controle sem fio compatível com PlayStation 4\n1x Cabo USB para carregamento',
