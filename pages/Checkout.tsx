@@ -7,24 +7,26 @@ import {
   ChevronRight, 
   Package, 
   ShieldCheck, 
-  ShoppingBag,
-  Zap,
-  Award,
-  Plus,
-  X,
-  Sparkles,
-  Clock,
-  TrendingUp,
-  CreditCard,
-  QrCode,
-  Copy,
-  Loader2,
-  Lock,
-  Ticket,
-  Tag,
-  AlertCircle,
-  ExternalLink,
-  ArrowRight
+  ShoppingBag, 
+  Zap, 
+  Award, 
+  Plus, 
+  X, 
+  Sparkles, 
+  Clock, 
+  TrendingUp, 
+  CreditCard, 
+  QrCode, 
+  Copy, 
+  Loader2, 
+  Lock, 
+  Ticket, 
+  Tag, 
+  AlertCircle, 
+  ExternalLink, 
+  ArrowRight, 
+  Banknote, 
+  Wallet 
 } from 'lucide-react';
 import { initMercadoPago } from '@mercadopago/sdk-react';
 import { CartItem, CheckoutData, User, Product } from '../types';
@@ -203,14 +205,10 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
   };
 
   // Função para criar Preferência do Mercado Pago e Redirecionar
-  const handleMercadoPagoRedirect = async () => {
+  const handleMercadoPagoRedirect = async (orderUUID: string) => {
     try {
       setProcessingMessage("Calculando descontos e gerando pagamento...");
       
-      // 1. GERA UM ID ÚNICO PARA O PEDIDO AGORA
-      // Usamos timestamp + random string para garantir unicidade e referência
-      const orderUUID = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-
       // 1. Prepara a lista base de itens do carrinho
       const items = cart.map(item => ({
         id: item.id,
@@ -352,7 +350,34 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPaymentStatus('processing');
-    await handleMercadoPagoRedirect();
+
+    // 1. GERA UM ID ÚNICO PARA O PEDIDO AGORA
+    // Usamos timestamp + random string para garantir unicidade e referência
+    const orderUUID = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
+    // Lógica para PAGAR NA ENTREGA (Cash)
+    if (data.paymentMethod === 'cash') {
+        setProcessingMessage("Registrando seu pedido...");
+        
+        // Simula um pequeno delay para melhor UX
+        setTimeout(() => {
+            onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0, {
+                id: orderUUID,
+                total: total,
+                address: data.address,
+                paymentMethod: 'cash',
+                customerName: data.name,
+                customerWhatsapp: data.whatsapp
+            });
+            
+            // Redireciona manualmente para a página de conta, pois não há redirect externo
+            window.location.hash = '/account';
+        }, 1500);
+        return;
+    }
+
+    // Lógica para PAGAMENTO ONLINE (Mercado Pago)
+    await handleMercadoPagoRedirect(orderUUID);
   };
 
   if (paymentStatus === 'processing') {
@@ -363,9 +388,13 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
           <Lock className="absolute inset-0 m-auto h-8 w-8 text-blue-900" />
         </div>
         <h2 className="text-2xl font-black text-blue-900 mb-2">{processingMessage}</h2>
-        <p className="text-gray-500 text-sm">Você será redirecionado para o ambiente seguro do Mercado Pago.</p>
+        <p className="text-gray-500 text-sm">
+            {data.paymentMethod === 'cash' 
+                ? 'Finalizando pedido. Prepare o pagamento para o entregador.' 
+                : 'Você será redirecionado para o ambiente seguro do Mercado Pago.'}
+        </p>
         <div className="mt-8 flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest">
-          <ShieldCheck className="h-4 w-4" /> Gateway Criptografado SSL
+          <ShieldCheck className="h-4 w-4" /> Ambiente Seguro
         </div>
       </div>
     );
@@ -484,12 +513,12 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                   <h3 className="text-xl font-black text-blue-900">Forma de Pagamento</h3>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   <button type="button" onClick={() => setData({...data, paymentMethod: 'pix'})} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${data.paymentMethod === 'pix' ? 'border-red-500 bg-red-50' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}`}>
                     <QrCode className={`h-8 w-8 ${data.paymentMethod === 'pix' ? 'text-red-500' : 'text-gray-400'}`} />
                     <div className="text-center">
                       <p className="font-black text-blue-900 text-sm">PIX</p>
-                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Instantâneo via MP</p>
+                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Instantâneo</p>
                     </div>
                   </button>
 
@@ -497,31 +526,42 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
                     <CreditCard className={`h-8 w-8 ${data.paymentMethod === 'card' ? 'text-red-500' : 'text-gray-400'}`} />
                     <div className="text-center">
                       <p className="font-black text-blue-900 text-sm">Cartão</p>
-                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Até 12x via MP</p>
+                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Até 12x Online</p>
+                    </div>
+                  </button>
+
+                  <button type="button" onClick={() => setData({...data, paymentMethod: 'cash'})} className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-4 ${data.paymentMethod === 'cash' ? 'border-red-500 bg-red-50' : 'border-gray-100 bg-gray-50 hover:border-gray-200'}`}>
+                    <Banknote className={`h-8 w-8 ${data.paymentMethod === 'cash' ? 'text-red-500' : 'text-gray-400'}`} />
+                    <div className="text-center">
+                      <p className="font-black text-blue-900 text-sm">Na Entrega</p>
+                      <p className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Dinheiro / Pix</p>
                     </div>
                   </button>
                 </div>
 
                 {/* Secure Payment Info Block - Substitui os inputs falsos */}
-                <div className="bg-blue-50 border border-blue-100 p-6 rounded-[2rem] flex items-center gap-4 animate-in fade-in duration-500">
-                   <div className="bg-blue-500 p-3 rounded-full text-white shadow-lg shadow-blue-500/30">
-                     <ShieldCheck className="h-6 w-6" />
+                <div className={`border p-6 rounded-[2rem] flex items-center gap-4 animate-in fade-in duration-500 ${data.paymentMethod === 'cash' ? 'bg-green-50 border-green-100' : 'bg-blue-50 border-blue-100'}`}>
+                   <div className={`p-3 rounded-full text-white shadow-lg ${data.paymentMethod === 'cash' ? 'bg-green-500 shadow-green-500/30' : 'bg-blue-500 shadow-blue-500/30'}`}>
+                     {data.paymentMethod === 'cash' ? <Truck className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
                    </div>
                    <div className="flex-1">
-                     <p className="text-xs font-black text-blue-900 uppercase tracking-wide mb-1">
-                       {data.paymentMethod === 'pix' ? 'Pagamento PIX Seguro' : 'Pagamento Cartão Seguro'}
+                     <p className={`text-xs font-black uppercase tracking-wide mb-1 ${data.paymentMethod === 'cash' ? 'text-green-800' : 'text-blue-900'}`}>
+                       {data.paymentMethod === 'pix' ? 'Pagamento PIX Seguro' : data.paymentMethod === 'card' ? 'Pagamento Cartão Seguro' : 'Pagar ao Receber'}
                      </p>
                      <p className="text-sm text-gray-600 leading-snug">
-                       Ao clicar em "Finalizar", você será redirecionado para o <b>Mercado Pago</b> para concluir sua compra com segurança total.
+                       {data.paymentMethod === 'cash' 
+                         ? 'Você pagará diretamente ao motoboy (dinheiro ou Pix) quando o pedido chegar.'
+                         : 'Ao clicar em "Finalizar", você será redirecionado para o Mercado Pago com segurança total.'
+                       }
                      </p>
                    </div>
-                   <ExternalLink className="h-5 w-5 text-gray-400" />
+                   {data.paymentMethod !== 'cash' && <ExternalLink className="h-5 w-5 text-gray-400" />}
                 </div>
 
               </div>
 
               <button type="submit" className="w-full bg-red-500 text-white py-6 rounded-[2rem] font-black text-2xl shadow-2xl shadow-red-500/30 hover:bg-red-600 active:scale-[0.98] transition-all flex items-center justify-center gap-4">
-                Finalizar e Pagar
+                Finalizar Pedido
                 <ChevronRight className="h-8 w-8" />
               </button>
             </form>

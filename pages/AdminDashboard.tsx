@@ -27,7 +27,8 @@ import {
   Loader2,
   X,
   Maximize2,
-  RefreshCw
+  RefreshCw,
+  Wallet
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
@@ -324,6 +325,7 @@ const AdminDashboard = ({
                     {filteredOrders.map((order) => {
                       const action = getNextAction(order.status);
                       const isMercadoPago = order.paymentMethod === 'mercadopago';
+                      const isCash = order.paymentMethod === 'cash';
                       const isUpdating = updatingOrderId === order.id;
                       const isChecking = checkingPaymentId === order.id;
 
@@ -341,7 +343,18 @@ const AdminDashboard = ({
                                 </div>
                               )}
 
-                              <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg w-fit border ${isMercadoPago ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : (isLogisticsMode ? 'bg-slate-900 text-slate-400 border-slate-700' : 'bg-gray-100 text-gray-500 border-gray-200')}`}>{isMercadoPago ? <CreditCard size={12} /> : <Banknote size={12} />}<span className="text-[10px] font-black uppercase">{isMercadoPago ? 'MERCADO PAGO' : (order.paymentMethod || 'PIX').toUpperCase()}</span></div>
+                              <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg w-fit border ${
+                                isMercadoPago 
+                                    ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' 
+                                    : isCash
+                                        ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                        : (isLogisticsMode ? 'bg-slate-900 text-slate-400 border-slate-700' : 'bg-gray-100 text-gray-500 border-gray-200')
+                              }`}>
+                                {isMercadoPago ? <CreditCard size={12} /> : isCash ? <Wallet size={12} /> : <Banknote size={12} />}
+                                <span className="text-[10px] font-black uppercase">
+                                    {isMercadoPago ? 'MERCADO PAGO' : isCash ? 'NA ENTREGA' : (order.paymentMethod || 'PIX').toUpperCase()}
+                                </span>
+                              </div>
                               <div className="flex items-start gap-1.5 mt-1"><MapPin size={14} className="text-red-500 shrink-0 mt-0.5" /><div><p className={`text-[11px] font-bold leading-tight ${isLogisticsMode ? 'text-slate-300' : 'text-gray-700'}`}>{order.address}</p><p className={`text-[10px] ${isLogisticsMode ? 'text-slate-500' : 'text-gray-400'}`}>{new Date(order.timestamp).toLocaleString('pt-BR')}</p></div></div>
                             </div>
                           </td>
@@ -376,8 +389,8 @@ const AdminDashboard = ({
                                 </div>
                               )}
 
-                              {/* VERIFICAÇÃO DE PAGAMENTO MERCADO PAGO */}
-                              {order.status === 'pending' && !isLogisticsMode && (
+                              {/* VERIFICAÇÃO DE PAGAMENTO MERCADO PAGO - Apenas se não for pagamento na entrega */}
+                              {order.status === 'pending' && !isLogisticsMode && !isCash && (
                                 <button 
                                     onClick={() => handleCheckPayment(order)}
                                     disabled={isChecking}
@@ -386,6 +399,12 @@ const AdminDashboard = ({
                                     {isChecking ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
                                     {isChecking ? 'Verificando...' : 'Verificar Pagamento'}
                                 </button>
+                              )}
+                              
+                              {order.status === 'pending' && isCash && (
+                                <div className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg text-center">
+                                    Pagamento na Entrega
+                                </div>
                               )}
                             </div>
                           </td>

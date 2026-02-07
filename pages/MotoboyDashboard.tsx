@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
 import { User, Order } from '../types';
-import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, RefreshCw, XCircle, Play, Maximize2, X } from 'lucide-react';
+import { Bike, MapPin, Navigation, Camera, CheckCircle2, User as UserIcon, LogOut, Loader2, Share2, Clock, BellRing, Volume2, RefreshCw, XCircle, Play, Maximize2, X, DollarSign, Wallet, CreditCard } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 
@@ -29,8 +29,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevQueueLength = useRef<number>(0);
 
-  // Filtra pedidos disponíveis (Shipped = Disponível para Motoboy nesta lógica, ou Pending se for lógica direta)
-  // Assumindo: status 'shipped' significa "Pronto para coleta/Em rota" mas ainda não assumido por este motoboy especificamente (a menos que já tenha courierId)
+  // Filtra pedidos disponíveis
   const deliveryQueue = orders.filter(o => o.status === 'shipped');
 
   // SEGURANÇA
@@ -82,7 +81,6 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
     // 2. Vibração Insistente
     if (navigator.vibrate) {
-        // Vibra 1s, para 0.5s, repete (navegadores limitam o tempo total, então o loop ajuda)
         navigator.vibrate([1000, 500, 1000, 500, 1000]); 
     }
 
@@ -115,12 +113,9 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
   };
 
   const enableDutyMode = () => {
-    // Pede permissão de notificação
     if ("Notification" in window) {
         Notification.requestPermission();
     }
-    
-    // Toca um som mudo/curto para desbloquear o AudioContext do navegador
     if (audioRef.current) {
         const dummyPlay = audioRef.current.play();
         if (dummyPlay !== undefined) {
@@ -258,8 +253,13 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
 
 
   const handleStartDelivery = async (order: Order) => {
-    stopRinging(); // Para o som se estiver tocando
-    if (window.confirm(`Iniciar rota para ${order.address}? Isso registrará o horário de saída.`)) {
+    stopRinging(); 
+    const isCash = order.paymentMethod === 'cash';
+    const msg = isCash 
+        ? `⚠️ ATENÇÃO: COBRAR R$ ${order.total.toFixed(2)} NA ENTREGA!\n\nIniciar rota para ${order.address}?` 
+        : `Iniciar rota para ${order.address}?`;
+
+    if (window.confirm(msg)) {
         setActiveOrder(order);
         
         try {
@@ -309,6 +309,12 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         return;
     }
 
+    if (activeOrder.paymentMethod === 'cash') {
+        if (!window.confirm(`💰 VOCÊ RECEBEU R$ ${activeOrder.total.toFixed(2)} DO CLIENTE?\n\nConfirme para finalizar.`)) {
+            return;
+        }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -337,6 +343,8 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
         setIsSubmitting(false);
     }
   };
+
+  const isCashOrder = activeOrder?.paymentMethod === 'cash';
 
   return (
     <div className="min-h-[100dvh] bg-slate-900 text-white pb-20 font-sans relative">
@@ -413,7 +421,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
       <div className="p-4 space-y-6 max-w-lg mx-auto">
         {/* Painel de Rota Ativa */}
         {activeOrder ? (
-             <div className="bg-emerald-600 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-top duration-500 ring-4 ring-emerald-500/30">
+             <div className={`rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-top duration-500 ring-4 ${isCashOrder ? 'bg-amber-500 ring-amber-400/50' : 'bg-emerald-600 ring-emerald-500/30'}`}>
                 <div className="relative z-10">
                     <div className="flex justify-between items-center mb-6">
                          <div className="flex items-center gap-2">
@@ -421,16 +429,16 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                                 <div className="w-2 h-2 bg-white rounded-full" /> GPS On
                             </span>
                          </div>
-                         <button onClick={handleCopyTrackingLink} className="bg-white text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-emerald-50 transition-colors shadow-sm">
+                         <button onClick={handleCopyTrackingLink} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-2 transition-colors shadow-sm ${isCashOrder ? 'bg-amber-700 text-white hover:bg-amber-800' : 'bg-white text-emerald-800 hover:bg-emerald-50'}`}>
                             <Share2 size={14} /> Link Cliente
                         </button>
                     </div>
 
-                    <div className="relative w-full h-80 mb-6 rounded-[2rem] border-4 border-emerald-500/30 shadow-inner overflow-hidden bg-emerald-800/50">
+                    <div className={`relative w-full h-80 mb-6 rounded-[2rem] border-4 shadow-inner overflow-hidden ${isCashOrder ? 'border-amber-300 bg-amber-600' : 'border-emerald-500/30 bg-emerald-800/50'}`}>
                         <div id="motoboy-map" className="w-full h-full z-0" />
                         
                         {!currentLocation && !gpsError && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-100 bg-emerald-900/80 z-10 backdrop-blur-sm">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-black/50 z-10 backdrop-blur-sm">
                                 <Loader2 className="animate-spin mb-2 w-8 h-8" /> 
                                 <span className="font-bold text-sm">Buscando sinal GPS...</span>
                             </div>
@@ -446,11 +454,28 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                         )}
                     </div>
 
+                    {/* ALERTA DE COBRANÇA */}
+                    {isCashOrder ? (
+                        <div className="bg-white text-amber-600 p-4 rounded-2xl mb-4 text-center shadow-lg animate-pulse">
+                            <p className="text-xs font-black uppercase tracking-widest mb-1">COBRAR NA ENTREGA</p>
+                            <div className="flex items-center justify-center gap-2 text-3xl font-black">
+                                <DollarSign size={28} />
+                                R$ {activeOrder.total.toFixed(2)}
+                            </div>
+                            <p className="text-[10px] font-bold mt-1 text-amber-800">Aceitar Dinheiro ou Pix</p>
+                        </div>
+                    ) : (
+                        <div className="bg-emerald-800/30 text-white p-3 rounded-xl mb-4 flex items-center justify-center gap-2 border border-emerald-400/30">
+                            <CheckCircle2 size={18} />
+                            <span className="font-bold text-sm uppercase">Pedido Pago Online</span>
+                        </div>
+                    )}
+
                     <h2 className="text-3xl font-black mt-2 mb-1 leading-none">Em Rota</h2>
-                    <p className="text-emerald-200 text-sm font-bold uppercase tracking-wide mb-4">Pedido #{activeOrder.id}</p>
+                    <p className="text-white/80 text-sm font-bold uppercase tracking-wide mb-4">Pedido #{activeOrder.id}</p>
                     
                     <div className="bg-black/20 rounded-2xl p-4 mb-4 backdrop-blur-sm">
-                        <p className="text-emerald-100 text-xs font-black uppercase mb-1">Destino</p>
+                        <p className="text-white/70 text-xs font-black uppercase mb-1">Destino</p>
                         <p className="text-white font-bold text-lg leading-tight flex items-start gap-2">
                             <MapPin className="shrink-0 mt-1" size={16} /> 
                             {activeOrder.address}
@@ -459,7 +484,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                     
                     <button 
                         onClick={() => setShowDeliveryModal(true)}
-                        className="w-full bg-white text-emerald-700 py-4 rounded-xl font-black text-lg shadow-lg flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        className={`w-full py-4 rounded-xl font-black text-lg shadow-lg flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all ${isCashOrder ? 'bg-white text-amber-600' : 'bg-white text-emerald-700'}`}
                     >
                         <CheckCircle2 size={24} /> FINALIZAR ENTREGA
                     </button>
@@ -470,7 +495,7 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                                 setActiveOrder(null);
                             }
                          }}
-                         className="w-full mt-4 text-emerald-200 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
+                         className="w-full mt-4 text-white/50 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors"
                     >
                         Cancelar / Ocorrência
                     </button>
@@ -499,42 +524,57 @@ const MotoboyDashboard = ({ user, orders, logout }: { user: User | null, orders:
                     <p className="font-bold">Nenhuma entrega disponível.</p>
                 </div>
             ) : (
-                deliveryQueue.map(order => (
-                    <div key={order.id} className={`bg-white text-slate-900 p-6 rounded-[2rem] shadow-lg border-l-8 transition-all ${activeOrder?.id === order.id ? 'border-emerald-500 opacity-50 pointer-events-none scale-95 grayscale' : 'border-blue-500 hover:scale-[1.02]'}`}>
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-black tracking-wide text-slate-600">#{order.id}</span>
-                            <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                                <Clock size={12} />
-                                {new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </span>
-                        </div>
-                        
-                        <div className="flex items-start gap-3 mb-5">
-                            <MapPin className="text-red-500 shrink-0 mt-1 fill-red-100" size={20} />
-                            <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase">Entregar em</p>
-                                <p className="font-black text-xl leading-tight text-slate-800">{order.address}</p>
+                deliveryQueue.map(order => {
+                    const isCash = order.paymentMethod === 'cash';
+                    return (
+                        <div key={order.id} className={`bg-white text-slate-900 p-6 rounded-[2rem] shadow-lg border-l-8 transition-all ${activeOrder?.id === order.id ? 'border-emerald-500 opacity-50 pointer-events-none scale-95 grayscale' : isCash ? 'border-amber-500 hover:scale-[1.02]' : 'border-blue-500 hover:scale-[1.02]'}`}>
+                            <div className="flex justify-between items-start mb-4">
+                                <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-black tracking-wide text-slate-600">#{order.id}</span>
+                                <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                                    <Clock size={12} />
+                                    {new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </span>
                             </div>
-                        </div>
+                            
+                            <div className="flex items-start gap-3 mb-5">
+                                <MapPin className="text-red-500 shrink-0 mt-1 fill-red-100" size={20} />
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase">Entregar em</p>
+                                    <p className="font-black text-xl leading-tight text-slate-800">{order.address}</p>
+                                </div>
+                            </div>
 
-                        <div className="flex items-center gap-3 mb-5 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            <div className="bg-white p-2 rounded-lg shadow-sm"><UserIcon size={16} className="text-slate-400" /></div>
-                            <div>
-                                <p className="text-[10px] font-black uppercase text-slate-400">Detalhes</p>
-                                <span className="text-sm font-bold text-slate-700">{order.items.length} volumes • {order.paymentMethod.toUpperCase()}</span>
+                            <div className="flex items-center gap-3 mb-5 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <div className="bg-white p-2 rounded-lg shadow-sm"><UserIcon size={16} className="text-slate-400" /></div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-slate-400">Detalhes</p>
+                                    <span className="text-sm font-bold text-slate-700">{order.items.length} volumes</span>
+                                </div>
                             </div>
+
+                            {/* STATUS DE PAGAMENTO NA LISTA */}
+                            <div className={`mb-5 p-3 rounded-xl flex items-center justify-between ${isCash ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>
+                                <div className="flex items-center gap-2">
+                                    {isCash ? <Wallet size={20} /> : <CreditCard size={20} />}
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase">{isCash ? 'COBRAR NA ENTREGA' : 'PAGO ONLINE'}</p>
+                                        <p className="text-xs font-medium">{isCash ? 'Dinheiro / Pix' : 'Mercado Pago / Pix'}</p>
+                                    </div>
+                                </div>
+                                {isCash && <span className="text-lg font-black">R$ {order.total.toFixed(2)}</span>}
+                            </div>
+                            
+                            {!activeOrder && (
+                                <button 
+                                    onClick={() => handleStartDelivery(order)}
+                                    className={`w-full text-white py-4 rounded-xl font-black uppercase tracking-wide active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg ${isCash ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}`}
+                                >
+                                    <Navigation size={20} /> INICIAR ROTA
+                                </button>
+                            )}
                         </div>
-                        
-                        {!activeOrder && (
-                            <button 
-                                onClick={() => handleStartDelivery(order)}
-                                className="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-wide hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
-                            >
-                                <Navigation size={20} /> INICIAR ROTA
-                            </button>
-                        )}
-                    </div>
-                ))
+                    );
+                })
             )}
         </div>
       </div>
