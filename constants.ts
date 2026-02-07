@@ -128,6 +128,64 @@ export const PRODUCTS: Product[] = [
     ]
   },
   {
+    id: 'goku-figure-01',
+    name: 'Boneco Goku Bastão Mágico Dragon Ball Action Figure',
+    description: '🐲 **Goku Clássico com Bastão Mágico – Dragon Ball**\n\nReviva as aventuras clássicas com esta Action Figure detalhada do Goku! Feita para fãs exigentes, esta peça captura perfeitamente o carisma do Saiyajin mais amado do mundo.\n\n✨ **Qualidade Colecionável:**\nProduzido em PVC de alta durabilidade, com pintura vibrante e acabamento impecável. Ideal para decoração ou para completar sua coleção.\n\n📏 **Especificações Técnicas:**\n\n*   **Material:** PVC de Alta Resistência\n*   **Tamanho:** 22 cm\n*   **Articulado:** Não (Estátua Fixa)\n*   **Tema:** Dragon Ball Clássico\n\n🎁 **Item Indispensável:**\nUma peça robusta e chamativa que se destaca em qualquer ambiente.',
+    price: 99.99,
+    originalPrice: 149.90,
+    image: 'https://iili.io/fm7vx2f.png',
+    images: [
+      'https://iili.io/fm7vx2f.png',
+      'https://iili.io/fm7p2yB.png',
+      'https://iili.io/fm7m7rx.md.png',
+      'https://iili.io/fmYjQJ2.png'
+    ],
+    category: 'Acessórios',
+    rating: 5.0,
+    reviewsCount: 18,
+    stock: 15,
+    deliveryToday: true,
+    isBestSeller: false,
+    hasFreeShipping: false,
+    tags: ['Goku', 'Dragon Ball', 'Anime', 'Figure'],
+    upsellIds: [],
+    benefits: [
+      "Material PVC Premium",
+      "Tamanho Real 22cm",
+      "Pintura Detalhada",
+      "Base de Apoio Inclusa",
+      "Alta Durabilidade"
+    ]
+  },
+  {
+    id: 'broly-figure-01',
+    name: 'Broly Super Saiyajin Action Figure Dragon Ball Super',
+    description: '🔥 **O Lendário Super Saiyajin Desperta!**\n\nLiberte a fúria e o poder indomável do Lendário Super Saiyajin Broly em sua coleção! Esta Action Figure de Broly na sua forma Super Saiyajin (Dragon Ball Super) é uma peça impressionante que captura toda a imponência e o detalhe do personagem, pronto para o combate.\n\n✨ **Qualidade & Durabilidade:**\nProduzida em **100% PVC de alta densidade**, esta figura oferece durabilidade superior e um acabamento que valoriza cada músculo e expressão de Broly.\n\n🏆 **Por que escolher este Broly:**\n\n*   💎 **Qualidade Premium (100% PVC):** Fabricado em PVC resistente, garante durabilidade e um excelente acabamento de pintura e escultura, sendo mais robusto que figuras comuns de resina.\n*   ✨ **Detalhes Incríveis:** Retrata fielmente a musculatura, os trajes e a expressão feroz de Broly.\n*   💪 **Construção Duradoura:** O material PVC assegura que sua figura mantenha a beleza por anos.\n*   📏 **Tamanho Imponente:** Com **20cm de altura**, tem presença marcante na estante.\n\n📦 **Nota sobre a Embalagem:**\nO boneco não acompanha caixa individual (embalagem de fábrica), mas garantimos um envio super reforçado para chegar perfeito até você.',
+    price: 79.99,
+    originalPrice: 119.90,
+    image: 'https://iili.io/fma7yt2.png',
+    images: [
+      'https://iili.io/fma7yt2.png',
+      'https://iili.io/fmalexR.md.png'
+    ],
+    category: 'Acessórios',
+    rating: 5.0,
+    reviewsCount: 15,
+    stock: 20,
+    deliveryToday: true,
+    isBestSeller: false,
+    hasFreeShipping: false,
+    tags: ['Broly', 'Dragon Ball', 'Anime', 'Figure', 'Colecionável'],
+    upsellIds: ['goku-figure-01'],
+    benefits: [
+      "Material 100% PVC Premium",
+      "Altura 20cm",
+      "Acabamento Realista",
+      "Alta Durabilidade",
+      "Envio Reforçado"
+    ]
+  },
+  {
     id: 'charger-20w-apple-01',
     name: 'Fonte Carregador USB-C 20W Apple Original',
     description: '⚡ **Recarga Turbo para seu iPhone!**\n\nO adaptador de energia USB-C de 20W Apple oferece recarga rápida e eficiente. Ideal para usar em casa, no trabalho ou onde você estiver.\n\n📱 **Compatibilidade & Performance:**\nConecte ao iPhone 8 ou posterior para recarga rápida: **50% de bateria em aproximadamente 35 minutos**.\nTambém compatível com iPad Pro e iPad Air para desempenho máximo. Compatível com qualquer aparelho com porta USB-C.\n\n✨ **Destaques do Produto:**\n\n✅ **ORIGINAL APPLE**\n✅ **SELO ANATEL**\n✅ **Potência 20W Real**\n✅ **Produto Novo e Lacrado**\n✅ **Conexão USB-C**\n\n📦 **Conteúdo da Caixa:**\n1x Carregador de Parede USB-C de 20W\n1x Manual do Usuário\n\n⚠️ *Cabo vendido separadamente.*',
