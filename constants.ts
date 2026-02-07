@@ -128,6 +128,360 @@ export const PRODUCTS: Product[] = [
     ]
   },
   {
+    id: 'ps4-controller-01',
+    name: 'Controle PS4 Sem Fio Bluetooth',
+    description: '🎮 **Controle Sem Fio para PlayStation 4 – Wireless com LED**\n\nEleve sua experiência nos jogos com o Controle Sem Fio compatível com PlayStation 4, desenvolvido para oferecer alta precisão, conforto e total liberdade de movimentos. Ideal para quem busca desempenho gamer com excelente custo-benefício.\n\n✨ **Qualidade Premium - Primeira Linha:**\nEste é um produto paralelo de **Primeira Linha**, fabricado com componentes de alta qualidade. Não possui diferença perceptível do original e garante **Zero Delay** (sem atrasos) nos comandos.\n\n🌟 **Principais Benefícios:**\n\n✅ **Controle sem fio (Wireless) com LED**\n✅ **Alta precisão nos comandos**\n✅ **Vibração realista** para maior imersão (DualShock 4)\n✅ **Touch Pad multi-touch clicável**\n✅ **Sensor de seis eixos** para movimentos mais naturais\n✅ **Design ergonômico e confortável**\n✅ **Bateria recarregável** com uso contínuo durante o carregamento\n\n🔧 **Características Técnicas:**\n\n*   **Tecnologia:** DualShock 4\n*   **Conectividade:** Wireless / USB\n*   **Compatibilidade:** PlayStation 4 / PC / Android / Mobile\n*   **Plug & Play:** Sim\n*   **Dimensões:** 16 cm x 11 cm x 6 cm\n*   **Cabo USB:** 1,80 m incluso\n\n📦 **Itens Inclusos:**\n1x Controle sem fio compatível com PlayStation 4\n1x Cabo USB para carregamento',
+    price: 116.99,
+    originalPrice: 199.90,
+    image: 'https://iili.io/fbmUIzQ.png',
+    images: [
+      'https://iili.io/fbmUIzQ.png',
+      'https://iili.io/fbmg0F9.png',
+      'https://iili.io/fbmrCDx.png',
+      'https://iili.io/fbmrXJn.png'
+    ],
+    category: 'Acessórios',
+    rating: 4.9,
+    reviewsCount: 128,
+    stock: 45,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: true,
+    tags: ['PS4', 'Gamer', 'Sem Fio', 'Bluetooth'],
+    upsellIds: [],
+    benefits: [
+      "Sem Fio / Bluetooth",
+      "Bateria Recarregável",
+      "Vibração DualShock",
+      "Touch Pad Funcional",
+      "Zero Delay",
+      "Compatível PC/Android"
+    ],
+    reviews: [
+      {
+        id: 'rev-ps4-01',
+        userName: 'Felipe Santos',
+        userAvatar: 'https://i.pravatar.cc/150?img=53',
+        rating: 5,
+        date: '2024-03-29T14:30:00Z',
+        text: 'Qualidade surpreendente! Não tem delay nenhum no Warzone, resposta imediata. A bateria dura bem e o acabamento é idêntico ao original.',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6kfkq-ly7f9wd2tr6ta3.16000051722049242.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-ly7f9k7im36d7f.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-ly7f9k7im2n90a.webp' }
+        ]
+      },
+      {
+        id: 'rev-ps4-02',
+        userName: 'Amanda Oliveira',
+        userAvatar: 'https://i.pravatar.cc/150?img=41',
+        rating: 5,
+        date: '2024-03-27T10:15:00Z',
+        text: 'Igualzinho ao original, peso, botões, tudo. Conectou de primeira no PS4. Ótimo custo-benefício.',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6kfkr-lwz5o6lpkbzz6b.16000051719369566.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-lwz5gblrp5fja4.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-lwz5gblrqjzz55.webp' }
+        ]
+      },
+      {
+        id: 'rev-ps4-03',
+        userName: 'Gustavo Lima',
+        userAvatar: 'https://i.pravatar.cc/150?img=12',
+        rating: 5,
+        date: '2024-03-25T16:45:00Z',
+        text: 'Melhor controle paralelo que já comprei. O analógico é firme e preciso. Chegou super rápido aqui em Cascavel.',
+        media: [
+          { type: 'video', url: 'https://down-cvs-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6kfkr-m2godnlix3k67b.16000051731326307.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m2goauv2bzgm54.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m2goauv2hlqe4a.webp' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'bike-light-solar-01',
+    name: 'Lanterna Bike Farol LED Buzina e Carregamento Solar/USB',
+    description: '🚴‍♂️ **Energia Inesgotável para Suas Aventuras!**\n\nO **Farol para Bicicleta Solar USB LED Recarregável com Buzina** é a escolha perfeita para quem busca autonomia total e proteção reforçada. Equipado com carregamento solar e USB, ele oferece praticidade incomparável: você pedala e recarrega ao mesmo tempo, sem se preocupar com tomadas.\n\n🌟 **CARACTERÍSTICAS E BENEFÍCIOS:**\n\n✅ **Carregamento Solar Inteligente:** Capta luz solar durante o dia para garantir carga extra à noite.\n✅ **Bateria Híbrida:** Recarregável também via USB em computadores ou carregadores.\n✅ **Iluminação LED de Alta Potência:** Superbrilhante com amplo alcance para máxima segurança.\n✅ **Buzina Potente 120dB:** Alerta motoristas e pedestres com eficiência.\n✅ **5 Modos de Luz:** Forte, Médio, Fraco, Flash Lento e Flash Rápido.\n✅ **Resistente à Água (IPX4):** Pronto para chuvas leves e qualquer clima.\n✅ **Fácil Instalação:** Suporte universal para qualquer guidão, sem ferramentas.\n\n📏 **ESPECIFICAÇÕES TÉCNICAS:**\n\n- Material: Plástico ABS de alta durabilidade\n- Fonte de energia: Solar e USB\n- Bateria: Interna recarregável\n- Tempo de recarga USB: 2 a 3 horas\n- Peso: Aprox. 120g\n- Dimensões: 10cm x 5cm\n\n📦 **ITENS INCLUSOS:**\n1x Lanterna Farol Led e Buzina\n1x Suporte de Fixação\n1x Cabo USB',
+    price: 139.90,
+    originalPrice: 199.90,
+    image: 'https://iili.io/fbmEScP.md.png',
+    images: [
+      'https://iili.io/fbmEScP.md.png',
+      'https://iili.io/fbmWyrl.md.png',
+      'https://iili.io/fbmhHMJ.png'
+    ],
+    category: 'Acessórios',
+    rating: 4.9,
+    reviewsCount: 42,
+    stock: 35,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: false,
+    tags: ['Bike', 'Solar', 'LED', 'Ciclismo'],
+    upsellIds: [],
+    benefits: [
+      "Carregamento Solar Automático",
+      "Buzina Integrada 120dB",
+      "LED de Alta Intensidade",
+      "Bateria Recarregável USB",
+      "Resistente à Água IPX4",
+      "Instalação Sem Ferramentas"
+    ],
+    reviews: [
+      {
+        id: 'rev-bike-01',
+        userName: 'Carlos Mendes',
+        userAvatar: 'https://i.pravatar.cc/150?img=12',
+        rating: 5,
+        date: '2024-03-28T10:00:00Z',
+        text: 'Achei sensacional a função solar. Deixo a bike no sol enquanto trabalho e volto pra casa com bateria cheia. A buzina é bem alta mesmo!',
+        media: [
+          { type: 'video', url: 'https://down-zl-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v5dk-mfl1pxnjgvt3f2.16000051759921025.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mfl1ok0ps5jb1b.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mfl1ok0ptk3r39.webp' }
+        ]
+      },
+      {
+        id: 'rev-bike-02',
+        userName: 'Juliana Costa',
+        userAvatar: 'https://i.pravatar.cc/150?img=5',
+        rating: 5,
+        date: '2024-03-25T15:30:00Z',
+        text: 'Muito prático e ilumina muito bem. Uso na ciclovia da Avenida Brasil e me sinto muito mais segura.',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-mboncgavxvhjbb.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-mboncgavxw0pc6.webp' }
+        ]
+      },
+      {
+        id: 'rev-bike-03',
+        userName: 'Roberto Silva',
+        userAvatar: 'https://i.pravatar.cc/150?img=60',
+        rating: 5,
+        date: '2024-03-22T09:15:00Z',
+        text: 'Produto robusto, aguenta bem os trancos da trilha. O carregamento USB é rápido também.',
+        media: [
+          { type: 'video', url: 'https://down-zl-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v5dl-meb1d5923ev5bd.16000051757135988.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-meb1g67n0yyp90.webp' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'smart-tag-ios-01',
+    name: 'Smart Air Tag Rastreador Bluetooth IOS',
+    description: '📍 **Smart Tag para iPhone – Encontre Seus Itens em Segundos!**\n\nCansado de perder chaves, bolsas, pets ou mochilas por aí? O **Smart Tag Bluetooth** é a solução prática e eficiente que você estava procurando! Com essa pequena ferramenta, você localiza seus objetos essenciais com rapidez e precisão, basta usar o **App Buscar** nativo da Apple – diretamente no seu iPhone.\n\n⚠️ **Atenção à Compatibilidade:**\nEste Smart Tag funciona **exclusivamente com iPhone** (iOS 12 ou superior). Infelizmente, não é compatível com dispositivos Android.\n\n✨ **DESTAQUES DO PRODUTO:**\n\n✅ **Integração Perfeita com iOS:**\nFunciona nativamente com o App Buscar da Apple. Simples, intuitivo e sem custos adicionais.\n\n✅ **Rastreamento Rápido:**\nLocalize seus itens em segundos via Bluetooth, seja em casa ou no escritório.\n\n✅ **Bateria de Longa Duração:**\nAté 1 ano de uso contínuo! O pacote inclui **2 baterias extras** para você não se preocupar.\n\n✅ **Design Compacto:**\nPequeno e leve, fácil de prender em chaves, coleiras de pets, bolsas e mochilas.\n\n🎯 **Aplicações Recomendadas:**\n✔️ Chaves\n✔️ Pets\n✔️ Mochilas & Bolsas\n✔️ Carros & Bicicletas\n✔️ Malas de Viagem\n\n🚫 **Cuidados:**\nEvite contato direto com água (chuva forte/mergulho). Limpe apenas com pano seco.\n\n❓ **Perguntas Frequentes:**\n\n* **Funciona em Android?** Não, apenas iPhone/iPad (iOS 12+).\n* **Preciso pagar mensalidade?** Não! O uso do App Buscar é gratuito.\n* **Tem garantia?** Sim, produto com nota fiscal e garantia contra defeitos.',
+    price: 35.99,
+    originalPrice: 59.90,
+    image: 'https://iili.io/fbmFpl1.png',
+    images: [
+      'https://iili.io/fbmFpl1.png',
+      'https://iili.io/fbmfVvn.png',
+      'https://iili.io/fbmqcAu.md.png',
+      'https://iili.io/fbmBTba.png'
+    ],
+    category: 'Acessórios',
+    rating: 4.8,
+    reviewsCount: 89,
+    stock: 50,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: false,
+    tags: ['iPhone', 'Rastreador', 'Apple', 'Segurança'],
+    upsellIds: [],
+    benefits: [
+      "Compatível com App Buscar (Apple)",
+      "Bateria dura até 1 ano",
+      "Inclui 2 baterias extras",
+      "Rastreamento Global (Rede Apple)",
+      "Toca som para encontrar",
+      "Sem mensalidade"
+    ],
+    reviews: [
+      {
+        id: 'rev-tag-01',
+        userName: 'Fernanda Lima',
+        userAvatar: 'https://i.pravatar.cc/150?img=9',
+        rating: 5,
+        date: '2024-03-25T14:00:00Z',
+        text: 'Funciona perfeitamente no iPhone! Configurei em segundos no app Buscar. Coloquei na chave do carro e já testei, a localização é bem precisa.',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mk0xcr660zyab4.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mk0xcr65fxfn5d.webp' }
+        ]
+      },
+      {
+        id: 'rev-tag-02',
+        userName: 'Rodrigo Alves',
+        userAvatar: 'https://i.pravatar.cc/150?img=11',
+        rating: 5,
+        date: '2024-03-22T10:30:00Z',
+        text: 'Excelente custo benefício. É muito igual ao original da Apple na funcionalidade. O vídeo mostra como é pequeno. Veio com bateria extra!',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v65f-mk2k8v60fs3n57.16000051769698201.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mk2k856k8tmpa6.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mk2k856kbmrl62.webp' }
+        ]
+      },
+      {
+        id: 'rev-tag-03',
+        userName: 'Camila Torres',
+        userAvatar: 'https://i.pravatar.cc/150?img=5',
+        rating: 5,
+        date: '2024-03-20T16:45:00Z',
+        text: 'Coloquei na coleira do meu cachorro. Dá uma paz de espírito enorme. O material parece resistente e não incomoda o pet.',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v65g-mjznj94eocn4d5.16000051769522131.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mjznihp3j18j05.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81ztc-mjznihp3kfsz49.webp' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'holder-hollow-knight-01',
+    name: 'Suporte Para Controle Hollow Knight',
+    description: '🎮🕹️✨🔥 **Transforme sua área gamer com estilo e proteção!**\n\nApresentamos o **Suporte para Controle Estilo Hollow Knight**, um acessório que une design futurista, funcionalidade e segurança em um só produto!\n\n✨⚔️ **Qualidade Premium:**\nFabricado em plástico PLA de alta qualidade, seu visual é inspirado em armaduras futuristas e figuras heroicas da ficção científica, garantindo um toque exclusivo e sofisticado para sua bancada, estante ou setup gamer.\n\n📏📐 **Dimensões:**\n📌 Largura: 7 cm\n📌 Comprimento: 8 cm\n📌 Altura: 10 cm\n\n✅🎯 **Compatibilidade Total:**\n✔️ PlayStation 5 (DualSense)\n✔️ PlayStation 4 (DualShock 4)\n✔️ Xbox Series X|S e Xbox One\n✔️ Controles de PC (USB/Bluetooth)\n✔️ Outras marcas e modelos padrão\n\n🌟💎 **Destaques do Produto:**\n🛡️ **Design decorativo e colecionável** – ideal para dar personalidade ao seu setup\n🎯 **Evita quedas e arranhões** – mantém seu controle sempre seguro\n⚖️ **Estabilidade total** – base larga e firme para proteção garantida\n🎁 **Presente perfeito** – criativo, útil e que todo gamer vai adorar\n\n📦📦 **Na embalagem você recebe:**\n1x Suporte para Controle Estilo Hollow Knight\n(⚠️ Controle não incluso – imagens ilustrativas)\n\n🔥🚀🎮 **Por que escolher este suporte?**\nPorque ele não é apenas um suporte… é parte do seu setup gamer!\nMantenha seu controle sempre à mão e dê aquele upgrade de estilo que seu espaço merece.',
+    price: 45.90,
+    originalPrice: 69.90,
+    image: 'https://iili.io/fbbbH0v.png',
+    images: [
+      'https://iili.io/fbbbH0v.png',
+      'https://iili.io/fbbyu7R.png',
+      'https://iili.io/fbbyPQ1.png',
+      'https://iili.io/fbmJPQS.md.png'
+    ],
+    category: 'Acessórios',
+    rating: 4.9,
+    reviewsCount: 42,
+    stock: 25,
+    deliveryToday: true,
+    isBestSeller: false,
+    hasFreeShipping: false,
+    tags: ['Gamer', 'Setup', 'Hollow Knight', 'Suporte'],
+    upsellIds: [],
+    benefits: [
+      "Design Exclusivo",
+      "Compatibilidade Universal",
+      "Base Estável",
+      "Material PLA Resistente",
+      "Decoração Gamer"
+    ],
+    reviews: [
+      {
+        id: 'rev-hk-01',
+        userName: 'Lucas Mendes',
+        userAvatar: 'https://i.pravatar.cc/150?img=53',
+        rating: 5,
+        date: '2024-03-20T14:00:00Z',
+        text: 'Ficou perfeito no meu setup! O acabamento é muito bom e segura bem o controle do PS5. O visual do Hollow Knight é incrível.',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v5dm-mer8bvk9883mf3.16000051758116082.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mer8b1ecj85d8c.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mer8b1eg31tsef.webp' }
+        ]
+      },
+      {
+        id: 'rev-hk-02',
+        userName: 'Beatriz Costa',
+        userAvatar: 'https://i.pravatar.cc/150?img=41',
+        rating: 5,
+        date: '2024-03-18T10:30:00Z',
+        text: 'Lindo demais! Chegou rápido e bem embalado. Meu namorado adorou o presente.',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6v5dn-mdvw4ghguznne2.16000051756218990.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mdvw3ebnb2f6cd.webp' }
+        ]
+      },
+      {
+        id: 'rev-hk-03',
+        userName: 'Gustavo Rocha',
+        userAvatar: 'https://i.pravatar.cc/150?img=12',
+        rating: 5,
+        date: '2024-03-15T16:45:00Z',
+        text: 'Muito estável, não tomba fácil. O design é muito fiel ao jogo. Recomendo!',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mfmsmiuz4fsw3a.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mfmsmiurfpxh2f.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-81z1k-mfmsmiut1b7o61.webp' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'qkz-ak6-01',
+    name: 'Fone de Ouvido Intra-Auricular QKZ AK6 Pro com Microfone',
+    description: '🎵 **Monitor de Áudio de Alta Fidelidade!**\n\nO Fone QKZ AK6 é reconhecido mundialmente pelo seu custo-benefício absurdo. Ideal para retorno de palco, músicos, gamers e audiófilos que buscam graves profundos e clareza cristalina.\n\n**CARACTERÍSTICAS PRINCIPAIS:**\n\n**Som de Alta Definição:**\nEquipado com Driver Dinâmico de 10mm, oferece graves potentes (Bass) sem distorcer os agudos.\n\n**Ergonomia Profissional:**\nDesign que se encaixa perfeitamente no ouvido, com gancho para orelha que impede que caia durante exercícios ou apresentações.\n\n**Versatilidade:**\nPerfeito para ouvir música no celular, jogar com precisão de áudio ou usar como retorno em shows e igrejas.\n\n**ESPECIFICAÇÕES TÉCNICAS:**\n\n✅ **Modelo:** QKZ AK6\n✅ **Sensibilidade:** 105±3dB\n✅ **Resistência:** 16 ohm\n✅ **Conector:** P2 3.5mm (Padrão universal)\n✅ **Microfone:** Sim, integrado no cabo\n✅ **Cancelamento de Ruído:** Passivo (Isolamento)\n✅ **Comprimento do cabo:** 1.2m\n\n**CONTEÚDO DO PACOTE:**\n\n📦 1 Par de Fones QKZ AK6\n📦 1 Kit de borrachinhas extras\n📦 1 Suporte para orelhas\n📦 1 Case Original',
+    price: 67.99,
+    originalPrice: 109.90,
+    image: 'https://iili.io/fbbNS4f.md.png',
+    images: [
+      'https://iili.io/fbbNS4f.md.png',
+      'https://iili.io/fbbkMrb.png',
+      'https://iili.io/fbb86XI.png',
+      'https://iili.io/fbbSdB9.png',
+      'https://iili.io/fbbgyIR.md.png'
+    ],
+    category: 'Eletrônicos',
+    rating: 4.9,
+    reviewsCount: 215,
+    stock: 60,
+    deliveryToday: true,
+    isBestSeller: true,
+    hasFreeShipping: false,
+    tags: ['Áudio', 'Monitor', 'QKZ', 'Gamer'],
+    upsellIds: [],
+    benefits: [
+      "Graves Potentes (Bass)",
+      "Retorno de Palco",
+      "Microfone HD Integrado",
+      "Cabo Resistente",
+      "Isolamento Acústico",
+      "Conector P2 Universal"
+    ],
+    reviews: [
+      {
+        id: 'rev-qkz-01',
+        userName: 'Matheus Oliveira',
+        userAvatar: 'https://i.pravatar.cc/150?img=68',
+        rating: 5,
+        date: '2024-03-18T10:00:00Z',
+        text: 'Qualidade absurda pelo preço! Os graves são muito presentes, uso para jogar no celular e ouvir música. O isolamento é ótimo.',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m9ic8is13a61b4.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m9ic8is139qa72.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m9ic8is0nthec7.webp' }
+        ]
+      },
+      {
+        id: 'rev-qkz-02',
+        userName: 'Daniela Martins',
+        userAvatar: 'https://i.pravatar.cc/150?img=44',
+        rating: 5,
+        date: '2024-03-16T15:30:00Z',
+        text: 'Comprei para usar de retorno na igreja. Surpreendeu muito! O som é limpo e não cai da orelha. O vídeo mostra os detalhes.',
+        media: [
+          { type: 'video', url: 'https://down-tx-br.vod.susercontent.com/api/v4/11110103/mms/br-11110103-6kfkq-mc4zbdi1r3ydb4.16000051752410687.mp4' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-mc4zam5vrbgl73.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-mc4zam5vrb8n20.webp' }
+        ]
+      },
+      {
+        id: 'rev-qkz-03',
+        userName: 'Bruno Henrique',
+        userAvatar: 'https://i.pravatar.cc/150?img=11',
+        rating: 5,
+        date: '2024-03-14T09:15:00Z',
+        text: 'Fone top demais. Chegou no mesmo dia em Cascavel. A caixa é bem rígida, protege bem o fone.',
+        media: [
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m64kcxzd0iia83.webp' },
+          { type: 'image', url: 'https://down-br.img.susercontent.com/file/br-11134103-7r98o-m64kcxzd3bn67b.webp' }
+        ]
+      }
+    ]
+  },
+  {
     id: 'trimmer-dragon-01',
     name: 'Máquina de Cortar Cabelo e Barba Dragão Portátil Elétrico',
     description: '🐉 **Estilo e Precisão na Palma da Mão!**\n\nEste **Barbeador Profissional Sem Fio** é a ferramenta definitiva para quem busca qualidade e estilo. Com design vintage em metal e estampa detalhada, ele não é apenas bonito, mas extremamente funcional.\n\n**CARACTERÍSTICAS PRINCIPAIS:**\n\n**Liberdade Sem Fio:**\nEste modelo é sem fio e possui bateria recarregável via USB. Tenha todo o conforto de cortar cabelos e fazer a barba sem cabos atrapalhando.\n\n**Bateria de Alta Duração:**\nPossui uma bateria de 1200mAh que garante uma autonomia de **2 horas de uso contínuo**. Recarga completa em apenas 2 horas.\n\n**Potência Profissional:**\nPerfeita para profissionais e uso doméstico, possui motor potente de 5W. Aguenta o trabalho duro do dia a dia. Ideal para pezinho, desenhos, disfarce e acabamentos. O que manda aqui é sua habilidade!\n\n**Design Premium:**\nCorpo todo em metal com acabamento texturizado (Dragão/Buda), perfeito para barbeiros que querem se destacar ou para ter uma ferramenta diferenciada em casa.\n\n**Custo-Benefício:**\nEntrega qualidade superior e mais funcionalidades que muitas marcas famosas que custam o triplo do preço.\n\n**ESPECIFICAÇÕES:**\n\n✅ **Potência:** 5W\n✅ **Tamanho:** 14,8 x 2,5 cm\n✅ **Bateria:** 1200mAh (Recarregável)\n✅ **Material:** Metal e Plástico ABS\n\n**CONTEÚDO DA EMBALAGEM:**\n\n📦 1 Máquina de Barbear\n📦 4 Pentes Guia (1.5mm, 2mm, 3mm, 4mm)\n📦 1 Cabo USB\n📦 1 Escovinha de Limpeza',
