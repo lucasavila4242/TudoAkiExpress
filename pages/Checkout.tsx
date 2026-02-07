@@ -34,8 +34,8 @@ import { PRODUCTS } from '../constants';
 // Chave pública
 initMercadoPago('APP_USR-7aecb091-762e-48c9-8161-7f5d2641d76e', { locale: 'pt-BR' });
 
-// Token de Acesso
-const MP_ACCESS_TOKEN = 'APP_USR-4804417043420437-012918-a9ca3d55a51b00f66109d7a322d68cf5-2717547924';
+// Token de Acesso (Disponível aqui para uso no Admin também)
+export const MP_ACCESS_TOKEN = 'APP_USR-4804417043420437-012918-a9ca3d55a51b00f66109d7a322d68cf5-2717547924';
 
 const VALID_COUPONS: Record<string, number> = {
   'CASCAVEL10': 0.10, // 10% de desconto
@@ -207,6 +207,10 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
     try {
       setProcessingMessage("Calculando descontos e gerando pagamento...");
       
+      // 1. GERA UM ID ÚNICO PARA O PEDIDO AGORA
+      // Usamos timestamp + random string para garantir unicidade e referência
+      const orderUUID = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
       // 1. Prepara a lista base de itens do carrinho
       const items = cart.map(item => ({
         id: item.id,
@@ -271,6 +275,8 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
 
       const preferenceData = {
         items: items,
+        // EXTERNAL REFERENCE É A CHAVE: Isso permite buscar o pagamento pelo ID do pedido
+        external_reference: orderUUID, 
         payer: {
           name: data.name.split(' ')[0],
           surname: data.name.split(' ').slice(1).join(' ') || 'Cliente',
@@ -318,8 +324,9 @@ const Checkout = ({ cart, user, onComplete }: { cart: CartItem[], user: User, on
       const result = await response.json();
       
       // SALVA O PEDIDO LOCALMENTE COM DADOS DO CLIENTE
+      // Usa o MESMO ID (orderUUID) que foi enviado ao Mercado Pago
       onComplete(pointsToEarn, usePoints ? maxRedeemablePoints : 0, {
-        id: result.external_reference,
+        id: orderUUID,
         total: total,
         address: data.address,
         paymentMethod: 'mercadopago',

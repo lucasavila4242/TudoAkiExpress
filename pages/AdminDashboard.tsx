@@ -26,12 +26,14 @@ import {
   Smartphone,
   Loader2,
   X,
-  Maximize2
+  Maximize2,
+  RefreshCw
 } from 'lucide-react';
 import { User, Order, OrderStatus } from '../types';
 import { Link, Navigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { MP_ACCESS_TOKEN } from './Checkout'; // Importa Token do Checkout
 
 const AdminDashboard = ({ 
   currentUser, 
@@ -50,6 +52,7 @@ const AdminDashboard = ({
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'all'>('all');
   const [proofModal, setProofModal] = useState<Order | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [checkingPaymentId, setCheckingPaymentId] = useState<string | null>(null);
   
   // Novo estado para o Zoom
   const [isZoomed, setIsZoomed] = useState(false);
@@ -187,8 +190,6 @@ const AdminDashboard = ({
     setUpdatingOrderId(order.id);
     try {
       // Atualiza o banco de dados (Firebase)
-      // O App.tsx propaga essa mudança para todos (Admin e Cliente) automaticamente
-      // A função updateOrderStatus agora é ROBUSTA e lida com pedidos antigos.
       await updateOrderStatus(order.id, nextStatus);
       
     } catch (error) {
@@ -196,6 +197,40 @@ const AdminDashboard = ({
       alert("Erro ao atualizar status. O sistema tentou recuperar o documento mas falhou.");
     } finally {
       setUpdatingOrderId(null);
+    }
+  };
+
+  // --- NOVA FUNÇÃO DE VERIFICAÇÃO DE PAGAMENTO ---
+  const handleCheckPayment = async (order: Order) => {
+    setCheckingPaymentId(order.id);
+    try {
+      const response = await fetch(`https://api.mercadopago.com/v1/payments/search?external_reference=${order.id}`, {
+        headers: {
+          'Authorization': `Bearer ${MP_ACCESS_TOKEN}`
+        }
+      });
+
+      if (!response.ok) throw new Error("Erro na API Mercado Pago");
+
+      const data = await response.json();
+      const results = data.results || [];
+      
+      const approvedPayment = results.find((p: any) => p.status === 'approved');
+
+      if (approvedPayment) {
+        if(window.confirm(`✅ Pagamento CONFIRMADO!\n\nID: ${approvedPayment.id}\nStatus: Aprovado\nValor: R$ ${approvedPayment.transaction_amount}\n\nDeseja liberar o pedido agora?`)) {
+           await updateOrderStatus(order.id, 'processing');
+        }
+      } else {
+        const lastStatus = results.length > 0 ? results[0].status : 'nenhum_registro';
+        alert(`⚠️ Pagamento NÃO confirmado.\n\nStatus atual no MP: ${lastStatus}\n\nO cliente pode ter gerado o QR Code mas não pagou ainda.`);
+      }
+
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao consultar Mercado Pago. Verifique o console.");
+    } finally {
+      setCheckingPaymentId(null);
     }
   };
 
@@ -290,6 +325,7 @@ const AdminDashboard = ({
                       const action = getNextAction(order.status);
                       const isMercadoPago = order.paymentMethod === 'mercadopago';
                       const isUpdating = updatingOrderId === order.id;
+                      const isChecking = checkingPaymentId === order.id;
 
                       return (
                         <tr key={order.id} className={`${isLogisticsMode ? 'hover:bg-slate-700/50' : 'hover:bg-blue-50/30'} transition-colors`}>
@@ -338,6 +374,18 @@ const AdminDashboard = ({
                                         <Timer size={10} /> Duração: <span className="font-bold text-blue-900">{getDurationString(order)}</span>
                                     </div>
                                 </div>
+                              )}
+
+                              {/* VERIFICAÇÃO DE PAGAMENTO MERCADO PAGO */}
+                              {order.status === 'pending' && !isLogisticsMode && (
+                                <button 
+                                    onClick={() => handleCheckPayment(order)}
+                                    disabled={isChecking}
+                                    className="flex items-center gap-2 text-[10px] font-bold bg-amber-50 text-amber-600 px-3 py-2 rounded-lg hover:bg-amber-100 transition-colors border border-amber-200 w-full justify-center"
+                                >
+                                    {isChecking ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                                    {isChecking ? 'Verificando...' : 'Verificar Pagamento'}
+                                </button>
                               )}
                             </div>
                           </td>
